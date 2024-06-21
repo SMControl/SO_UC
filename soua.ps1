@@ -3,10 +3,9 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.42
-# - Reintroduced functionality for Part 5.1 (now Part 6) to stop SMUpdates.exe if running.
-# - Moved all part messages to appear at the start of each part as requested.
-# - Set all user outputs to green except the message in Part 9.
+# Version 1.43
+# - Included "Revert Services and Processes to Original State" part at the end.
+# - Ensured all functionalities remain intact while addressing aesthetic changes.
 
 # Initialize script start time
 $startTime = Get-Date
@@ -113,6 +112,27 @@ Read-Host
 Write-Host "[Part 11/11] Setting permissions for StationMaster folder..." -ForegroundColor Green
 Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
 & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+
+# Revert Services and Processes to Original State
+# -----
+Write-Host "[Revert] Reverting services and processes to original state..." -ForegroundColor Yellow
+# Revert srvSOLiveSales service
+if ($initialServiceState -eq 'Running') {
+    Set-Service -Name $ServiceName -StartupType Automatic
+    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+} elseif ($initialServiceState -eq 'Stopped') {
+    Set-Service -Name $ServiceName -StartupType Manual
+}
+
+# Revert PDTWiFi processes
+foreach ($process in $PDTWiFiProcesses) {
+    $p = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if (!$p) {
+        Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process.exe"
+    }
+}
+
+Write-Host "All tasks completed successfully." -ForegroundColor Green
 
 # Calculate and display script execution time
 $endTime = Get-Date
