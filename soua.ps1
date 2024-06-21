@@ -3,10 +3,9 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.22
-# - Adjusted handling of srvSOLiveSales service to start it if it was running at the beginning of the script.
-# - Ensured PDTWiFi.exe and PDTWiFi64.exe are restarted if they were previously running.
-# - Enhanced comments and chatty output.
+# Version 1.23
+# - Corrected syntax issues in function declarations and expressions.
+# - Ensured proper handling of srvSOLiveSales service and PDTWiFi processes.
 
 # Initialize start time
 $startTime = Get-Date
@@ -212,11 +211,11 @@ Write-Host "[Part 9/11] Ensuring Smart Office processes are closed..." -Foregrou
 Do {
     Check-Process -ProcessName "Sm32"
     Check-Process -ProcessName "Sm32Main"
-} Until (-Not (Get-Process -Name "Sm32" -ErrorAction SilentlyContinue) -And -Not (Get
+} Until (-Not (Get-Process -Name "Sm32" -ErrorAction SilentlyContinue) -And -Not (Get-Process -Name "Sm32Main" -ErrorAction SilentlyContinue))
 
--Process -Name "Sm32Main" -ErrorAction SilentlyContinue))
+# Part 10 - Set
 
-# Part 10 - Set Permissions for StationMaster Folder
+ Permissions for StationMaster Folder
 # -----
 Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -ForegroundColor Cyan
 
