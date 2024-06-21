@@ -3,9 +3,8 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.19
-# - Fixed issues with restarting PDTWiFi.exe and PDTWiFi64.exe after setup.
-# - Added green message when srvSOLiveSales service is successfully started.
+# Version 1.20
+# - Added messages when stopping PDTWiFi.exe and PDTWiFi64.exe.
 # - Enhanced comments and chatty output.
 
 # Initialize start time
@@ -46,8 +45,10 @@ $ProcessesClosed = @()
 
 ForEach ($ProcessName in $ProcessesToClose) {
     If (Get-Process -Name $ProcessName -ErrorAction SilentlyContinue) {
+        Write-Host "Stopping $ProcessName..." -ForegroundColor Yellow
         Stop-Process -Name $ProcessName -ErrorAction SilentlyContinue
         $ProcessesClosed += $ProcessName
+        Write-Host "$ProcessName stopped." -ForegroundColor Green
     }
 }
 
@@ -136,6 +137,7 @@ Function Manage-Service {
                 While ((Get-Service -Name $ServiceName).Status -eq 'Stopping') {
                     Start-Sleep -Seconds 1
                 }
+                Write-Host "$ServiceName service stopped." -ForegroundColor Green
             } else {
                 Write-Host "$ServiceName service is already stopped." -ForegroundColor Green
             }
@@ -213,11 +215,11 @@ icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C 
 
 # Part 11 - Revert Services to Original State and Restart Processes
 # -----
-Write-Host "[Part 11/11] Reverting
+Write-Host "[Part 11/11] Reverting services and restarting processes..." -ForegroundColor Cyan
 
- services and restarting processes..." -ForegroundColor Cyan
+#
 
-# Revert srvSOLiveSales service if managed
+ Revert srvSOLiveSales service if managed
 Manage-Service -ServiceName $ServiceName -WasRunning $true
 
 # Restart PDTWiFi.exe and PDTWiFi64.exe if they were previously running
