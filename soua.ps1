@@ -3,8 +3,8 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.45
-# - Changed message color in Part 10 to white.
+# Version 1.46
+# - Fixed path in part 4
 
 # Initialize script start time
 $startTime = Get-Date
@@ -43,12 +43,14 @@ if (-not (Test-Path $workingDir)) {
 
 # Part 4 - Download and Run SO_UC.exe
 # -----
+$SO_UC_Path = "C:\winsm\SO_UC.exe"
 Write-Host "[Part 4/11] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
-$SO_UC_Path = "$workingDir\SO_UC.exe"
+
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/blob/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
     Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
 }
+
 Start-Process -FilePath $SO_UC_Path -Wait
 
 # Part 5 - Check for Firebird Installation
