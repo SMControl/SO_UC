@@ -3,9 +3,10 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.18
-# - Fixed syntax issue with Invoke-Expression in Download-File function.
-# - Added proper handling for starting and stopping services.
+# Version 1.19
+# - Fixed issues with restarting PDTWiFi.exe and PDTWiFi64.exe after setup.
+# - Added green message when srvSOLiveSales service is successfully started.
+# - Enhanced comments and chatty output.
 
 # Initialize start time
 $startTime = Get-Date
@@ -160,6 +161,7 @@ Function Manage-Service {
                 While ((Get-Service -Name $ServiceName).Status -eq 'Starting') {
                     Start-Sleep -Seconds 1
                 }
+                Write-Host "$ServiceName service started successfully." -ForegroundColor Green
             } else {
                 Write-Host "$ServiceName service is already started." -ForegroundColor Green
             }
@@ -209,31 +211,24 @@ Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -Foreg
 
 icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null 2>&1
 
-# Part 11 - Revert Services to Original State
+# Part 11 - Revert Services to Original State and Restart Processes
 # -----
-Write-Host "[Part 11/11] Reverting services to original state..." -ForegroundColor Cyan
+Write-Host "[Part 11/11] Reverting
 
-# Function to revert service state
-Function Revert-Service {
-    param (
-        [string]$ServiceName,
-        [bool]$WasRunning
-    )
-    If ($WasRunning) {
-       
-
- Manage-Service -ServiceName $ServiceName -Action "Enable"
-        Manage-Service -ServiceName $ServiceName -Action "Start"
-        Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
-        Write-Host "Waiting for $ServiceName service to start..." -ForegroundColor Yellow
-        While ((Get-Service -Name $ServiceName).Status -eq 'Starting') {
-            Start-Sleep -Seconds 1
-        }
-    }
-}
+ services and restarting processes..." -ForegroundColor Cyan
 
 # Revert srvSOLiveSales service if managed
-Revert-Service -ServiceName $ServiceName -WasRunning $true
+Manage-Service -ServiceName $ServiceName -WasRunning $true
+
+# Restart PDTWiFi.exe and PDTWiFi64.exe if they were previously running
+$ProcessesToRestart = @("PDTWiFi", "PDTWiFi64")
+ForEach ($ProcessName in $ProcessesToRestart) {
+    If ($ProcessesClosed -contains $ProcessName) {
+        Write-Host "Starting $ProcessName..." -ForegroundColor Yellow
+        Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$ProcessName.exe" -ErrorAction SilentlyContinue
+        Write-Host "$ProcessName started." -ForegroundColor Green
+    }
+}
 
 # Initialize end time
 $endTime = Get-Date
