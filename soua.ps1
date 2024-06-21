@@ -3,8 +3,8 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.09
-# - Added summary at the end to include details about closed/reopened processes and service status.
+# Version 1.10
+# - Updated service name to srvSOLiveSales in the summary section.
 
 # Initialize start time
 $startTime = Get-Date
@@ -121,16 +121,12 @@ If (-Not (Test-Path -Path "C:\Program Files (x86)\Firebird")) {
 # -----
 Write-Host "[Part 7/11] Managing processes and services..." -ForegroundColor Cyan
 
-# Stop and disable Smart Office Live Sales (SO Live Sales) if enabled
-$ServiceName = "Smart Office Live Sales"
-$AltServiceName = "SO Live Sales"
+# Stop and disable srvSOLiveSales service if enabled
+$ServiceName = "srvSOLiveSales"
 
 If ((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status -eq 'Running') {
     Stop-Service -Name $ServiceName
     Set-Service -Name $ServiceName -StartupType Disabled
-} ElseIf ((Get-Service -Name $AltServiceName -ErrorAction SilentlyContinue).Status -eq 'Running') {
-    Stop-Service -Name $AltServiceName
-    Set-Service -Name $AltServiceName -StartupType Disabled
 }
 
 # Ensure only one instance of firebird.exe is running
@@ -171,7 +167,7 @@ icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C 
 # -----
 Write-Host "[Part 11/11] Reverting services to original state..." -ForegroundColor Cyan
 
-# Start and set Smart Office Live Sales (SO Live Sales) service back to Automatic
+# Start and set srvSOLiveSales service back to Automatic
 Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
 Set-Service -Name $ServiceName -StartupType Automatic
 
@@ -185,5 +181,5 @@ Write-Host "Script completed in $($totalTime.ToString('hh\:mm\:ss'))" -Foregroun
 # Summary
 Write-Host "`nSummary:" -ForegroundColor Yellow
 Write-Host "Processes Closed: $($ProcessesClosed -join ', ')" -ForegroundColor Yellow
-Write-Host "Service Status (Smart Office Live Sales): $((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status)" -ForegroundColor Yellow
+Write-Host "Service Status (srvSOLiveSales): $((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status)" -ForegroundColor Yellow
 Read-Host "Press any key to exit..."
