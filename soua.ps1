@@ -3,8 +3,8 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.10
-# - Updated service name to srvSOLiveSales in the summary section.
+# Version 1.11
+# - Added recording and restoring state for "srvSOLiveSales" service.
 
 # Initialize start time
 $startTime = Get-Date
@@ -123,8 +123,11 @@ Write-Host "[Part 7/11] Managing processes and services..." -ForegroundColor Cya
 
 # Stop and disable srvSOLiveSales service if enabled
 $ServiceName = "srvSOLiveSales"
+$Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 
-If ((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status -eq 'Running') {
+$ServiceWasRunning = $false
+If ($Service -ne $null -and $Service.Status -eq 'Running') {
+    $ServiceWasRunning = $true
     Stop-Service -Name $ServiceName
     Set-Service -Name $ServiceName -StartupType Disabled
 }
@@ -167,9 +170,13 @@ icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C 
 # -----
 Write-Host "[Part 11/11] Reverting services to original state..." -ForegroundColor Cyan
 
-# Start and set srvSOLiveSales service back to Automatic
-Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
-Set-Service -Name $ServiceName -StartupType Automatic
+# Start and set srvSOLiveSales service back to its original state
+If ($Service -ne $null) {
+    If ($ServiceWasRunning) {
+        Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    }
+    Set-Service -Name $ServiceName -StartupType Automatic
+}
 
 # Initialize end time
 $endTime = Get-Date
