@@ -19,25 +19,38 @@ function Manage-Service {
     )
     $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     if ($null -ne $service) {
-        if ($Action -eq "Stop" -and $service.Status -eq 'Running') {
-            Write-Host "Stopping $ServiceName service..." -ForegroundColor Yellow
-            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-            $service.WaitForStatus('Stopped', '00:01:00')
-            Write-Host "$ServiceName service stopped." -ForegroundColor Green
-        } elseif ($Action -eq "Disable" -and $service.StartType -ne 'Disabled') {
-            Write-Host "Disabling $ServiceName service..." -ForegroundColor Yellow
-            Set-Service -Name $ServiceName -StartupType Disabled
-            Write-Host "$ServiceName service disabled." -ForegroundColor Green
-        } elseif ($Action -eq "Enable" -and $service.StartType -eq 'Disabled') {
-            Write-Host "Enabling $ServiceName service..." -ForegroundColor Yellow
-            Set-Service -Name $ServiceName -StartupType Automatic
-            $service.WaitForStatus('Stopped', '00:01:00') # Ensure service is in stopped state before starting
-            Write-Host "$ServiceName service enabled." -ForegroundColor Green
-        } elseif ($Action -eq "Start" -and $service.Status -ne 'Running') {
-            Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
-            Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
-            $service.WaitForStatus('Running', '00:01:00')
-            Write-Host "$ServiceName service started successfully." -ForegroundColor Green
+        switch ($Action) {
+            "Stop" {
+                if ($service.Status -eq 'Running') {
+                    Write-Host "Stopping $ServiceName service..." -ForegroundColor Yellow
+                    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+                    $service.WaitForStatus('Stopped', '00:01:00')
+                    Write-Host "$ServiceName service stopped." -ForegroundColor Green
+                }
+            }
+            "Disable" {
+                if ($service.StartType -ne 'Disabled') {
+                    Write-Host "Disabling $ServiceName service..." -ForegroundColor Yellow
+                    Set-Service -Name $ServiceName -StartupType Disabled
+                    Write-Host "$ServiceName service disabled." -ForegroundColor Green
+                }
+            }
+            "Enable" {
+                if ($service.StartType -eq 'Disabled') {
+                    Write-Host "Enabling $ServiceName service..." -ForegroundColor Yellow
+                    Set-Service -Name $ServiceName -StartupType Automatic
+                    $service.WaitForStatus('Stopped', '00:01:00') # Ensure service is in stopped state before starting
+                    Write-Host "$ServiceName service enabled." -ForegroundColor Green
+                }
+            }
+            "Start" {
+                if ($service.Status -ne 'Running') {
+                    Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
+                    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+                    $service.WaitForStatus('Running', '00:01:00')
+                    Write-Host "$ServiceName service started successfully." -ForegroundColor Green
+                }
+            }
         }
     }
 }
@@ -68,15 +81,19 @@ foreach ($process in $smartOfficeProcesses) {
 Write-Host "[Part 3/11] Creating C:\winsm directory if it doesn't exist..." -ForegroundColor Cyan
 if (-not (Test-Path -Path "C:\winsm")) {
     New-Item -Path "C:\winsm" -ItemType Directory | Out-Null
+    Write-Host "Directory C:\winsm created." -ForegroundColor Green
+} else {
+    Write-Host "Directory C:\winsm already exists." -ForegroundColor Yellow
 }
 
 # Part 4 - Download and Run SO_UC.exe
 # -----
-Write-Host "[Part 4/11] Downloading and running SO_UC.exe..." -ForegroundColor Cyan
+Write-Host "[Part 4/11] Checking for SO_UC.exe..." -ForegroundColor Cyan
 $soUcExePath = "C:\winsm\SO_UC.exe"
 $soUcExeUrl = "https://github.com/SMControl/SO_UC/blob/main/SO_UC.exe"
 if (-not (Test-Path -Path $soUcExePath)) {
     try {
+        Write-Host "Downloading SO_UC.exe..." -ForegroundColor Yellow
         Invoke-WebRequest -Uri $soUcExeUrl -OutFile $soUcExePath
         Write-Host "SO_UC.exe downloaded successfully." -ForegroundColor Green
     } catch {
@@ -84,8 +101,12 @@ if (-not (Test-Path -Path $soUcExePath)) {
         Read-Host "Press any key to exit..."
         exit
     }
+} else {
+    Write-Host "SO_UC.exe already exists." -ForegroundColor Yellow
 }
+Write-Host "Running SO_UC.exe..." -ForegroundColor Yellow
 Start-Process -FilePath $soUcExePath -Wait
+Write-Host "SO_UC.exe finished running." -ForegroundColor Green
 
 # Part 5 - Check for Firebird Installation
 # -----
@@ -95,6 +116,9 @@ $firebirdInstallerUrl = "https://raw.githubusercontent.com/SMControl/SM_Firebird
 if (-not (Test-Path -Path $firebirdDir)) {
     Write-Host "Firebird is not installed. Running the online installer..." -ForegroundColor Yellow
     Invoke-Expression -Command "irm $firebirdInstallerUrl | iex"
+    Write-Host "Firebird installation completed." -ForegroundColor Green
+} else {
+    Write-Host "Firebird is already installed." -ForegroundColor Yellow
 }
 
 # Part 6 - Check and Manage Smart Office Live Sales Service
@@ -115,10 +139,10 @@ $ProcessesClosed = @()
 foreach ($ProcessName in $ProcessesToCheck) {
     $Process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
     if ($Process) {
-        Write-Host "Stopping $ProcessName..." -ForegroundColor Yellow
+        Write-Host "Stopping $ProcessName process..." -ForegroundColor Yellow
         Stop-Process -Name $ProcessName -Force -ErrorAction SilentlyContinue
         $ProcessesClosed += $ProcessName
-        Write-Host "$ProcessName stopped." -ForegroundColor Green
+        Write-Host "$ProcessName process stopped." -ForegroundColor Green
     }
 }
 
@@ -128,6 +152,7 @@ Write-Host "[Part 8/11] Launching Smart Office setup executable..." -ForegroundC
 $setupExePath = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "Setup*.exe" | Select-Object -First 1
 if ($setupExePath) {
     Start-Process -FilePath $setupExePath.FullName -Wait
+    Write-Host "Smart Office setup executable finished." -ForegroundColor Green
 } else {
     Write-Host "Setup executable not found. Please ensure it is located in C:\winsm\SmartOffice_Installer." -ForegroundColor Red
     Read-Host "Press any key to exit..."
@@ -136,14 +161,14 @@ if ($setupExePath) {
 
 # Part 9 - Wait for User Confirmation
 # -----
-Write-Host "[Part 9/11] Ensuring Smart Office processes are closed..." -ForegroundColor Cyan
+Write-Host "[Part 9/11] Waiting for user confirmation..." -ForegroundColor Cyan
 Read-Host "Press any key to continue after installation is fully finished..."
 
 # Part 10 - Set Permissions for StationMaster Folder
 # -----
 Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -ForegroundColor Cyan
-# Set permissions for StationMaster folder
 icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C | Out-Null
+Write-Host "Permissions for StationMaster folder set." -ForegroundColor Green
 
 # Part 11 - Revert Changes
 # -----
@@ -159,19 +184,7 @@ If ($Service -ne $null -and $Service.Status -eq 'Stopped') {
 $ProcessesToRestart = @("PDTWiFi", "PDTWiFi64")
 ForEach ($ProcessName in $ProcessesToRestart) {
     If ($ProcessesClosed -contains $ProcessName) {
-        Write-Host "Starting $ProcessName..." -ForegroundColor Yellow
-        Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$ProcessName.exe" -ErrorAction SilentlyContinue
-        Write-Host "$ProcessName started." -ForegroundColor Green
+        Write-Host "Starting $ProcessName process..." -ForegroundColor Yellow
+        Start
     }
 }
-
-# Initialize end time
-$endTime = Get-Date
-
-# Calculate total script run time
-$totalTime = New-TimeSpan -Start $startTime -End $endTime
-
-# Display total script run time
-Write-Host "Script completed in $($totalTime.ToString('hh\:mm\:ss'))" -ForegroundColor Green
-
-Read-Host "Press any key to exit..."
