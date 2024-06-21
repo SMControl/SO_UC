@@ -3,8 +3,8 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.13
-# - Enhanced management of srvSOLiveSales service with wait for start/stop operations.
+# Version 1.15
+# - Corrected Write-Host color parameters to ensure script runs smoothly.
 
 # Initialize start time
 $startTime = Get-Date
@@ -147,6 +147,24 @@ Function Manage-Service {
             } else {
                 Write-Host "$ServiceName service is already disabled." -ForegroundColor Green
             }
+        } elseif ($Action -eq "Enable") {
+            If ($Service.StartType -eq 'Disabled') {
+                Write-Host "Enabling $ServiceName service..." -ForegroundColor Yellow
+                Set-Service -Name $ServiceName -StartupType Automatic
+            } else {
+                Write-Host "$ServiceName service is already enabled." -ForegroundColor Green
+            }
+        } elseif ($Action -eq "Start") {
+            If ($Service.Status -eq 'Stopped') {
+                Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
+                Start-Service -Name $ServiceName
+                Write-Host "Waiting for $ServiceName service to start..." -ForegroundColor Yellow
+                While ((Get-Service -Name $ServiceName).Status -eq 'Starting') {
+                    Start-Sleep -Seconds 1
+                }
+            } else {
+                Write-Host "$ServiceName service is already started." -ForegroundColor Green
+            }
         }
     } else {
         Write-Host "$ServiceName service does not exist. Ignoring." -ForegroundColor Yellow
@@ -198,25 +216,16 @@ icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C 
 Write-Host "[Part 11/11] Reverting services to original state..." -ForegroundColor Cyan
 
 # Function to start and set the service back to its original state
-Function Revert-Service {
+Function Revert
+
+-Service {
     param (
         [string]$ServiceName,
         [bool]$WasRunning
     )
-    $Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-    If ($Service -ne $null) {
-        If ($WasRunning) {
-            Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
-            Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
-            Write-Host "Waiting for $ServiceName service to start..." -ForegroundColor Yellow
-            While ((Get-Service -Name $ServiceName).Status -eq 'Starting') {
-                Start-Sleep -Seconds 1
-            }
-        }
-        Set-Service -Name $ServiceName -StartupType Automatic
-        Write-Host "Set $ServiceName service to Automatic startup." -ForegroundColor
-
- Yellow
+    If ($WasRunning) {
+        Manage-Service -ServiceName $ServiceName -Action "Enable"
+        Manage-Service -ServiceName $ServiceName -Action "Start"
     }
 }
 
@@ -226,12 +235,10 @@ Revert-Service -ServiceName $ServiceName -WasRunning $true
 # Initialize end time
 $endTime = Get-Date
 
-# Calculate and display total script run time
+# Calculate total script run time
 $totalTime = New-TimeSpan -Start $startTime -End $endTime
+
+# Display total script run time
 Write-Host "Script completed in $($totalTime.ToString('hh\:mm\:ss'))" -ForegroundColor Green
 
-# Summary
-Write-Host "`nSummary:" -ForegroundColor Yellow
-Write-Host "Processes Closed: $($ProcessesClosed -join ', ')" -ForegroundColor Yellow
-Write-Host "Service Status ($ServiceName): $((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status)" -ForegroundColor Yellow
 Read-Host "Press any key to exit..."
