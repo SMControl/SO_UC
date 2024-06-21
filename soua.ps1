@@ -3,9 +3,9 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.15
-# - Corrected Write-Host color parameters to ensure script runs smoothly.
-# - Fixed issue with downloading SO_UC.exe from the specified URL.
+# Version 1.16
+# - Ensured PDTWiFi.exe and PDTWiFi64.exe are restarted after being closed.
+# - Fixed service management and added proper error handling for service operations.
 
 # Initialize start time
 $startTime = Get-Date
@@ -217,11 +217,18 @@ Write-Host "[Part 11/11] Reverting services to original state..." -ForegroundCol
 Function Revert-Service {
     param (
         [string]$ServiceName,
-        [bool]$WasRunning
+        [bool]$Was
+
+Running
     )
     If ($WasRunning) {
         Manage-Service -ServiceName $ServiceName -Action "Enable"
         Manage-Service -ServiceName $ServiceName -Action "Start"
+        Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
+        Write-Host "Waiting for $ServiceName service to start..." -ForegroundColor Yellow
+        While ((Get-Service -Name $ServiceName).Status -eq 'Starting') {
+            Start-Sleep -Seconds 1
+        }
     }
 }
 
