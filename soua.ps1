@@ -5,6 +5,7 @@
 # ---
 # Version 1.15
 # - Corrected Write-Host color parameters to ensure script runs smoothly.
+# - Fixed issue with downloading SO_UC.exe from the specified URL.
 
 # Initialize start time
 $startTime = Get-Date
@@ -81,18 +82,12 @@ If (-Not (Test-Path -Path $SO_UC_Path)) {
         }
     }
 
-    $SO_UC_Url = "https://github.com/SMControl/SO_UC/blob/main/SO_UC.exe"
+    $SO_UC_Url = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
     Write-Host "Downloading SO_UC.exe..." -ForegroundColor Yellow
-    $downloadJob = Start-Job -ScriptBlock { 
-        param($SO_UC_Url, $SO_UC_Path)
-        Download-File -url $SO_UC_Url -output $SO_UC_Path 
-    } -ArgumentList $SO_UC_Url, $SO_UC_Path
-
-    # Wait for the download job to complete
-    $downloadJob | Wait-Job
+    Download-File -url $SO_UC_Url -output $SO_UC_Path
 
     # Ensure the download succeeded
-    If ((Get-Job -Id $downloadJob.Id).State -eq 'Completed') {
+    If (Test-Path -Path $SO_UC_Path) {
         Write-Host "SO_UC.exe downloaded successfully." -ForegroundColor Green
     } Else {
         Write-Host "ERROR: Failed to download SO_UC.exe" -ForegroundColor Red
