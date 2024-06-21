@@ -62,6 +62,7 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     Read-Host "Press any key to exit..."
     exit
 }
+Write-Host "[Part 1/11] Check for administrative rights completed successfully." -ForegroundColor Green
 
 # Part 2 - Check for Running Smart Office Processes
 # -----
@@ -74,6 +75,7 @@ foreach ($process in $smartOfficeProcesses) {
         exit
     }
 }
+Write-Host "[Part 2/11] Check for running Smart Office processes completed successfully." -ForegroundColor Green
 
 # Part 3 - Create Directory if it Doesn't Exist
 # -----
@@ -84,6 +86,7 @@ if (-not (Test-Path -Path "C:\winsm")) {
 } else {
     Write-Host "Directory C:\winsm already exists." -ForegroundColor Yellow
 }
+Write-Host "[Part 3/11] Create directory completed successfully." -ForegroundColor Green
 
 # Part 4 - Download and Run SO_UC.exe
 # -----
@@ -106,6 +109,7 @@ if (-not (Test-Path -Path $soUcExePath)) {
 Write-Host "Running SO_UC.exe..." -ForegroundColor Yellow
 Start-Process -FilePath $soUcExePath -Wait
 Write-Host "SO_UC.exe finished running." -ForegroundColor Green
+Write-Host "[Part 4/11] SO_UC.exe check and run completed successfully." -ForegroundColor Green
 
 # Part 5 - Check for Firebird Installation
 # -----
@@ -119,6 +123,7 @@ if (-not (Test-Path -Path $firebirdDir)) {
 } else {
     Write-Host "Firebird is already installed." -ForegroundColor Yellow
 }
+Write-Host "[Part 5/11] Check for Firebird installation completed successfully." -ForegroundColor Green
 
 # Part 6 - Check and Manage Smart Office Live Sales Service
 # -----
@@ -129,6 +134,7 @@ if ($Service -ne $null -and $Service.Status -eq 'Running') {
     Manage-Service -ServiceName $ServiceName -Action "Stop"
     Manage-Service -ServiceName $ServiceName -Action "Disable"
 }
+Write-Host "[Part 6/11] Check and manage Smart Office Live Sales service completed successfully." -ForegroundColor Green
 
 # Part 7 - Check and Manage PDTWiFi Processes
 # -----
@@ -144,6 +150,7 @@ foreach ($ProcessName in $ProcessesToCheck) {
         Write-Host "$ProcessName process stopped." -ForegroundColor Green
     }
 }
+Write-Host "[Part 7/11] Check and manage PDTWiFi processes completed successfully." -ForegroundColor Green
 
 # Part 8 - Launch Setup Executable
 # -----
@@ -157,39 +164,42 @@ if ($setupExePath) {
     Read-Host "Press any key to exit..."
     exit
 }
+Write-Host "[Part 8/11] Launch Smart Office setup executable completed successfully." -ForegroundColor Green
 
 # Part 9 - Wait for User Confirmation
 # -----
 Write-Host "[Part 9/11] Waiting for user confirmation..." -ForegroundColor Cyan
-Read-Host "Press any key to continue after installation is fully finished..."
+Read-Host "When installation of Smart Office is fully finished, please press Enter to finish off installation assistant tasks."
+Write-Host "[Part 9/11] User confirmation completed successfully." -ForegroundColor Green
 
 # Part 10 - Set Permissions for StationMaster Folder
 # -----
 Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -ForegroundColor Cyan
 icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C | Out-Null
-Write-Host "Permissions for StationMaster folder set." -ForegroundColor Green
+Write-Host "Permissions for StationMaster
 
-# Part 11 - Revert Changes
+ folder set." -ForegroundColor Green
+Write-Host "[Part 10/11] Set permissions for StationMaster folder completed successfully." -ForegroundColor Green
+
+# Part 11 - Revert Services and Processes to Original State
 # -----
-Write-Host "[Part 11/11] Reverting changes..." -ForegroundColor Cyan
-
-# Restart srvSOLiveSales service if it was running
-If ($Service -ne $null -and $Service.Status -eq 'Stopped') {
+Write-Host "[Part 11/11] Reverting services and processes to their original state..." -ForegroundColor Cyan
+if ($Service -ne $null -and $Service.Status -eq 'Stopped') {
     Manage-Service -ServiceName $ServiceName -Action "Enable"
     Manage-Service -ServiceName $ServiceName -Action "Start"
 }
 
-# Restart PDTWiFi.exe and PDTWiFi64.exe if they were previously running
-$ProcessesToRestart = @("PDTWiFi", "PDTWiFi64")
-ForEach ($ProcessName in $ProcessesToRestart) {
-    If ($ProcessesClosed -contains $ProcessName) {
+foreach ($ProcessName in $ProcessesClosed) {
+    $ProcessPath = "C:\Program Files (x86)\StationMaster\$ProcessName.exe"
+    if (Test-Path -Path $ProcessPath) {
         Write-Host "Starting $ProcessName process..." -ForegroundColor Yellow
-        Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$ProcessName.exe"
+        Start-Process -FilePath $ProcessPath
         Write-Host "$ProcessName process started." -ForegroundColor Green
     }
 }
+Write-Host "[Part 11/11] Revert services and processes to their original state completed successfully." -ForegroundColor Green
 
-# Calculate total script run time
+# Total script run time
 $endTime = Get-Date
 $totalTime = $endTime - $startTime
 Write-Host "Total script run time: $totalTime" -ForegroundColor Cyan
