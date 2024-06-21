@@ -3,13 +3,19 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.34
-# - Streamlined progress messages with [OK] indicator
-# - Removed all unnecessary messages to the user
-# - Added total script execution time in simplified format
+# Version 1.36
+# - Implemented consistent part message behavior: initial yellow/orange message switches to green with [OK] upon completion
 
 # Initialize script start time
 $startTime = Get-Date
+
+# Function to display part message
+function Show-PartMessage {
+    param(
+        [string]$message
+    )
+    Write-Host "$message..." -ForegroundColor Yellow
+}
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -22,6 +28,7 @@ if (-not (Test-Admin)) {
     pause
     exit
 } else {
+    Show-PartMessage "[Part 1/11] Checking for admin rights"
     Write-Host "[Part 1/11] Checking for admin rights... [OK]" -ForegroundColor Green
 }
 
@@ -34,6 +41,7 @@ foreach ($process in $processesToCheck) {
         exit
     }
 }
+Show-PartMessage "[Part 2/11] Checking for running Smart Office processes"
 Write-Host "[Part 2/11] Checking for running Smart Office processes... [OK]" -ForegroundColor Green
 
 # Part 3 - Create Directory if it Doesn't Exist
@@ -42,6 +50,7 @@ $workingDir = "C:\winsm"
 if (-not (Test-Path $workingDir)) {
     New-Item -Path $workingDir -ItemType Directory | Out-Null
 }
+Show-PartMessage "[Part 3/11] Ensuring working directory exists"
 Write-Host "[Part 3/11] Ensuring working directory exists... [OK]" -ForegroundColor Green
 
 # Part 4 - Download and Run SO_UC.exe
@@ -52,6 +61,7 @@ if (-not (Test-Path $SO_UC_Path)) {
     Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
 }
 Start-Process -FilePath $SO_UC_Path -Wait
+Show-PartMessage "[Part 4/11] Downloading and running SO_UC.exe if necessary"
 Write-Host "[Part 4/11] Downloading and running SO_UC.exe if necessary... [OK]" -ForegroundColor Green
 
 # Part 5 - Check for Firebird Installation
@@ -61,11 +71,13 @@ $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird
 if (-not (Test-Path $firebirdDir)) {
     Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
 }
+Show-PartMessage "[Part 5/11] Checking for Firebird installation"
 Write-Host "[Part 5/11] Checking for Firebird installation... [OK]" -ForegroundColor Green
 
 # Part 5.1 - Stop SMUpdates.exe if running
 # -----
 Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+Show-PartMessage "[Part 5.1/11] Checking and stopping SMUpdates.exe if running"
 Write-Host "[Part 5.1/11] Checking and stopping SMUpdates.exe if running... [OK]" -ForegroundColor Green
 
 # Part 6 - Check and Manage Smart Office Live Sales Service
@@ -81,6 +93,7 @@ if ($service) {
         Set-Service -Name $ServiceName -StartupType Disabled
     }
 }
+Show-PartMessage "[Part 6/11] Checking and managing Smart Office Live Sales service"
 Write-Host "[Part 6/11] Checking and managing Smart Office Live Sales service... [OK]" -ForegroundColor Green
 
 # Part 7 - Check and Manage PDTWiFi Processes
@@ -92,6 +105,7 @@ foreach ($process in $PDTWiFiProcesses) {
         Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
     }
 }
+Show-PartMessage "[Part 7/11] Checking and managing PDTWiFi processes"
 Write-Host "[Part 7/11] Checking and managing PDTWiFi processes... [OK]" -ForegroundColor Green
 
 # Part 8 - Launch Setup Executable
@@ -102,17 +116,19 @@ $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object Las
 if ($setupExe) {
     Start-Process -FilePath $setupExe.FullName -Wait
 }
+Show-PartMessage "[Part 8/11] Launching Smart Office setup executable"
 Write-Host "[Part 8/11] Launching Smart Office setup executable... [OK]" -ForegroundColor Green
 
 # Part 9 - Wait for User Confirmation
 # -----
-Read-Host "Press Enter to continue"
+Read-Host "When Smart Office Installation is fully complete, press Enter to finish off Installation Assistant tasks..."
 
 # Part 10 - Set Permissions for StationMaster Folder
 # -----
 Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
 & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 
+Show-PartMessage "[Part 10/11] Setting permissions for StationMaster folder"
 Write-Host "[Part 10/11] Setting permissions for StationMaster folder... [OK]" -ForegroundColor Green
 
 # Part 11 - Revert Services and Processes to Original State
@@ -127,7 +143,7 @@ foreach ($process in $PDTWiFiProcesses) {
         Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process.exe"
     }
 }
-
+Show-PartMessage "[Part 11/11] Reverting services and processes to original state"
 Write-Host "[Part 11/11] Reverting services and processes to original state... [OK]" -ForegroundColor Green
 
 # Calculate and display script execution time
