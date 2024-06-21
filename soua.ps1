@@ -3,7 +3,7 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.17
+# Version 1.18
 # - Fixed syntax issue with Invoke-Expression in Download-File function.
 # - Added proper handling for starting and stopping services.
 
@@ -219,10 +219,10 @@ Function Revert-Service {
         [string]$ServiceName,
         [bool]$WasRunning
     )
-    If ($Was
+    If ($WasRunning) {
+       
 
-Running) {
-        Manage-Service -ServiceName $ServiceName -Action "Enable"
+ Manage-Service -ServiceName $ServiceName -Action "Enable"
         Manage-Service -ServiceName $ServiceName -Action "Start"
         Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
         Write-Host "Waiting for $ServiceName service to start..." -ForegroundColor Yellow
