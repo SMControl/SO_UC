@@ -3,9 +3,9 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.23
-# - Corrected syntax issues in function declarations and expressions.
-# - Ensured proper handling of srvSOLiveSales service and PDTWiFi processes.
+# Version 1.24
+# - Fixed syntax issue with chatty output.
+# - Ensured smooth execution flow.
 
 # Initialize start time
 $startTime = Get-Date
@@ -213,13 +213,13 @@ Do {
     Check-Process -ProcessName "Sm32Main"
 } Until (-Not (Get-Process -Name "Sm32" -ErrorAction SilentlyContinue) -And -Not (Get-Process -Name "Sm32Main" -ErrorAction SilentlyContinue))
 
-# Part 10 - Set
-
- Permissions for StationMaster Folder
+# Part 10 - Set Permissions for StationMaster Folder
 # -----
 Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -ForegroundColor Cyan
 
 # Suppress output of changing StationMaster folder permissions
+
+
 icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C | Out-Null
 
 # Part 11 - Revert Changes
