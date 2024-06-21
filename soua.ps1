@@ -83,7 +83,10 @@ If (-Not (Test-Path -Path $SO_UC_Path)) {
 
     $SO_UC_Url = "https://github.com/SMControl/SO_UC/blob/main/SO_UC.exe"
     Write-Host "Downloading SO_UC.exe..." -ForegroundColor Yellow
-    $downloadJob = Start-Job -ScriptBlock { Download-File -url $using:SO_UC_Url -output $using:SO_UC_Path }
+    $downloadJob = Start-Job -ScriptBlock { 
+        param($SO_UC_Url, $SO_UC_Path)
+        Download-File -url $SO_UC_Url -output $SO_UC_Path 
+    } -ArgumentList $SO_UC_Url, $SO_UC_Path
 
     # Wait for the download job to complete
     $downloadJob | Wait-Job
@@ -215,10 +218,8 @@ icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C 
 # -----
 Write-Host "[Part 11/11] Reverting services to original state..." -ForegroundColor Cyan
 
-# Function to start and set the service back to its original state
-Function Revert
-
--Service {
+# Function to revert service state
+Function Revert-Service {
     param (
         [string]$ServiceName,
         [bool]$WasRunning
