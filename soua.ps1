@@ -3,9 +3,9 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.16
-# - Ensured PDTWiFi.exe and PDTWiFi64.exe are restarted after being closed.
-# - Fixed service management and added proper error handling for service operations.
+# Version 1.17
+# - Fixed syntax issue with Invoke-Expression in Download-File function.
+# - Added proper handling for starting and stopping services.
 
 # Initialize start time
 $startTime = Get-Date
@@ -217,11 +217,11 @@ Write-Host "[Part 11/11] Reverting services to original state..." -ForegroundCol
 Function Revert-Service {
     param (
         [string]$ServiceName,
-        [bool]$Was
-
-Running
+        [bool]$WasRunning
     )
-    If ($WasRunning) {
+    If ($Was
+
+Running) {
         Manage-Service -ServiceName $ServiceName -Action "Enable"
         Manage-Service -ServiceName $ServiceName -Action "Start"
         Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
