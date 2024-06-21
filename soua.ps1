@@ -2,11 +2,11 @@
 # ---
 # This script assists in installing Smart Office.
 # ---
-# Version 1.30
-# - Added prompt for user before starting Part 9 to ensure installation is complete.
+# Version 1.31
 # - Improved readability and clarity of comments.
-# - Added detailed status messages for handling PDTWiFi.exe and PDTWiFi64.exe.
-# - Included total run time summary at the end of the script.
+# - Standardized user messages for consistency.
+# - Separated functionality into clear parts.
+# - Managed service and process states cleanly and consistently.
 
 # Start time for the script
 $startTime = Get-Date
@@ -39,7 +39,6 @@ function Manage-Service {
                 if ($service.StartType -eq 'Disabled') {
                     Write-Host "Enabling $ServiceName service..." -ForegroundColor Yellow
                     Set-Service -Name $ServiceName -StartupType Automatic
-                    $service.WaitForStatus('Stopped', '00:01:00') # Ensure service is in stopped state before starting
                     Write-Host "$ServiceName service enabled." -ForegroundColor Green
                 }
             }
@@ -185,6 +184,17 @@ $ProcessesToRestart = @("PDTWiFi", "PDTWiFi64")
 ForEach ($ProcessName in $ProcessesToRestart) {
     If ($ProcessesClosed -contains $ProcessName) {
         Write-Host "Starting $ProcessName process..." -ForegroundColor Yellow
-        Start
+        Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$ProcessName.exe"
+        Write-Host "$ProcessName process started." -ForegroundColor Green
     }
 }
+
+# Calculate
+
+ total script run time
+$endTime = Get-Date
+$totalTime = $endTime - $startTime
+Write-Host "Total script run time: $totalTime" -ForegroundColor Cyan
+
+# End of script
+Read-Host "Press any key to exit..."
