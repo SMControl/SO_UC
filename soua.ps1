@@ -3,8 +3,8 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.20
-# - Added messages when stopping PDTWiFi.exe and PDTWiFi64.exe.
+# Version 1.21
+# - Added check to only manage srvSOLiveSales service if it is running at the start of the script.
 # - Enhanced comments and chatty output.
 
 # Initialize start time
@@ -175,9 +175,15 @@ Function Manage-Service {
 
 $ServiceName = "srvSOLiveSales"
 
-# Check and manage srvSOLiveSales service
-Manage-Service -ServiceName $ServiceName -Action "Stop"
-Manage-Service -ServiceName $ServiceName -Action "Disable"
+# Check if srvSOLiveSales service is running before managing
+$Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+If ($Service -ne $null -and $Service.Status -eq 'Running') {
+    # Manage srvSOLiveSales service
+    Manage-Service -ServiceName $ServiceName -Action "Stop"
+    Manage-Service -ServiceName $ServiceName -Action "Disable"
+} Else {
+    Write-Host "$ServiceName service is not running. Skipping management." -ForegroundColor Green
+}
 
 # Ensure only one instance of firebird.exe is running
 Do {
@@ -209,17 +215,18 @@ Do {
 
 # Part 10 - Set Permissions for StationMaster Folder
 # -----
+
+
 Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -ForegroundColor Cyan
 
-icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null 2>&1
+# Suppress output of changing StationMaster folder permissions
+icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C | Out-Null
 
-# Part 11 - Revert Services to Original State and Restart Processes
+# Part 11 - Revert Changes
 # -----
-Write-Host "[Part 11/11] Reverting services and restarting processes..." -ForegroundColor Cyan
+Write-Host "[Part 11/11] Reverting changes..." -ForegroundColor Cyan
 
-#
-
- Revert srvSOLiveSales service if managed
+# Revert srvSOLiveSales service if managed
 Manage-Service -ServiceName $ServiceName -WasRunning $true
 
 # Restart PDTWiFi.exe and PDTWiFi64.exe if they were previously running
