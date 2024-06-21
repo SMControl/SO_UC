@@ -189,9 +189,7 @@ ForEach ($ProcessName in $ProcessesToRestart) {
     }
 }
 
-# Calculate
-
- total script run time
+# Calculate total script run time
 $endTime = Get-Date
 $totalTime = $endTime - $startTime
 Write-Host "Total script run time: $totalTime" -ForegroundColor Cyan
