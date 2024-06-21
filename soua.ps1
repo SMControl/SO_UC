@@ -3,9 +3,8 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.43
-# - Included "Revert Services and Processes to Original State" part at the end.
-# - Ensured all functionalities remain intact while addressing aesthetic changes.
+# Version 1.45
+# - Changed message color in Part 10 to white.
 
 # Initialize script start time
 $startTime = Get-Date
@@ -44,7 +43,7 @@ if (-not (Test-Path $workingDir)) {
 
 # Part 4 - Download and Run SO_UC.exe
 # -----
-Write-Host "[Part 4/11] Downloading and running SO_UC.exe if necessary..." -ForegroundColor Green
+Write-Host "[Part 4/11] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/blob/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
@@ -104,7 +103,7 @@ if ($setupExe) {
 
 # Part 10 - Wait for User Confirmation
 # -----
-Write-Host "[Part 10/11] Please press Enter when the Smart Office installation is fully finished..." -ForegroundColor Green
+Write-Host "[Part 10/11] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
 Read-Host
 
 # Part 11 - Set Permissions for StationMaster Folder
