@@ -1,11 +1,13 @@
 # soua.ps1
 # ---
 # This script assists in installing Smart Office.
-# It performs various checks, downloads necessary files if needed, and manages processes.
+# It performs various checks, downloads necessary files if needed, manages processes and services,
+# and sets permissions for specific folders.
 # ---
-# Version 1.24
-# - Fixed syntax issue with chatty output.
-# - Ensured smooth execution flow.
+# Version 1.25
+# - Improved comments and readability.
+# - Added messages for PDTWiFi.exe and PDTWiFi64.exe operations.
+# - Added summary at the end of the script.
 
 # Initialize start time
 $startTime = Get-Date
@@ -121,7 +123,7 @@ If (-Not (Test-Path -Path "C:\Program Files (x86)\Firebird")) {
 # -----
 Write-Host "[Part 7/11] Managing processes and services..." -ForegroundColor Cyan
 
-# Function to stop and disable the service if it exists and is running
+# Function to manage a service
 Function Manage-Service {
     param (
         [string]$ServiceName,
@@ -129,43 +131,48 @@ Function Manage-Service {
     )
     $Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     If ($Service -ne $null) {
-        If ($Action -eq "Stop") {
-            If ($Service.Status -eq 'Running') {
-                Write-Host "Stopping $ServiceName service..." -ForegroundColor Yellow
-                Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-                Write-Host "Waiting for $ServiceName service to stop..." -ForegroundColor Yellow
-                While ((Get-Service -Name $ServiceName).Status -eq 'Stopping') {
-                    Start-Sleep -Seconds 1
+        Switch ($Action) {
+            "Stop" {
+                If ($Service.Status -eq 'Running') {
+                    Write-Host "Stopping $ServiceName service..." -ForegroundColor Yellow
+                    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+                    Write-Host "Waiting for $ServiceName service to stop..." -ForegroundColor Yellow
+                    While ((Get-Service -Name $ServiceName).Status -eq 'Stopping') {
+                        Start-Sleep -Seconds 1
+                    }
+                    Write-Host "$ServiceName service stopped." -ForegroundColor Green
+                } else {
+                    Write-Host "$ServiceName service is already stopped." -ForegroundColor Green
                 }
-                Write-Host "$ServiceName service stopped." -ForegroundColor Green
-            } else {
-                Write-Host "$ServiceName service is already stopped." -ForegroundColor Green
             }
-        } elseif ($Action -eq "Disable") {
-            If ($Service.StartType -ne 'Disabled') {
-                Write-Host "Disabling $ServiceName service..." -ForegroundColor Yellow
-                Set-Service -Name $ServiceName -StartupType Disabled
-            } else {
-                Write-Host "$ServiceName service is already disabled." -ForegroundColor Green
-            }
-        } elseif ($Action -eq "Enable") {
-            If ($Service.StartType -eq 'Disabled') {
-                Write-Host "Enabling $ServiceName service..." -ForegroundColor Yellow
-                Set-Service -Name $ServiceName -StartupType Automatic
-            } else {
-                Write-Host "$ServiceName service is already enabled." -ForegroundColor Green
-            }
-        } elseif ($Action -eq "Start") {
-            If ($Service.Status -eq 'Stopped') {
-                Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
-                Start-Service -Name $ServiceName
-                Write-Host "Waiting for $ServiceName service to start..." -ForegroundColor Yellow
-                While ((Get-Service -Name $ServiceName).Status -eq 'Starting') {
-                    Start-Sleep -Seconds 1
+            "Disable" {
+                If ($Service.StartType -ne 'Disabled') {
+                    Write-Host "Disabling $ServiceName service..." -ForegroundColor Yellow
+                    Set-Service -Name $ServiceName -StartupType Disabled
+                } else {
+                    Write-Host "$ServiceName service is already disabled." -ForegroundColor Green
                 }
-                Write-Host "$ServiceName service started successfully." -ForegroundColor Green
-            } else {
-                Write-Host "$ServiceName service is already started." -ForegroundColor Green
+            }
+            "Enable" {
+                If ($Service.StartType -eq 'Disabled') {
+                    Write-Host "Enabling $ServiceName service..." -ForegroundColor Yellow
+                    Set-Service -Name $ServiceName -StartupType Automatic
+                } else {
+                    Write-Host "$ServiceName service is already enabled." -ForegroundColor Green
+                }
+            }
+            "Start" {
+                If ($Service.Status -eq 'Stopped') {
+                    Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
+                    Start-Service -Name $ServiceName
+                    Write-Host "Waiting for $ServiceName service to start..." -ForegroundColor Yellow
+                    While ((Get-Service -Name $ServiceName).Status -eq 'Starting') {
+                        Start-Sleep -Seconds 1
+                    }
+                    Write-Host "$ServiceName service started successfully." -ForegroundColor Green
+                } else {
+                    Write-Host "$ServiceName service is already started." -ForegroundColor Green
+                }
             }
         }
     } else {
@@ -217,9 +224,9 @@ Do {
 # -----
 Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -ForegroundColor Cyan
 
-# Suppress output of changing StationMaster folder permissions
+# Suppress output
 
-
+ of changing StationMaster folder permissions
 icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C | Out-Null
 
 # Part 11 - Revert Changes
@@ -227,8 +234,10 @@ icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C 
 Write-Host "[Part 11/11] Reverting changes..." -ForegroundColor Cyan
 
 # Restart srvSOLiveSales service if it was running
-Manage-Service -ServiceName $ServiceName -Action "Enable"
-Manage-Service -ServiceName $ServiceName -Action "Start"
+If ($Service -ne $null -and $Service.Status -eq 'Running') {
+    Manage-Service -ServiceName $ServiceName -Action "Enable"
+    Manage-Service -ServiceName $ServiceName -Action "Start"
+}
 
 # Restart PDTWiFi.exe and PDTWiFi64.exe if they were previously running
 $ProcessesToRestart = @("PDTWiFi", "PDTWiFi64")
