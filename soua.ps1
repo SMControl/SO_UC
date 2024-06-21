@@ -3,8 +3,9 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.21
-# - Added check to only manage srvSOLiveSales service if it is running at the start of the script.
+# Version 1.22
+# - Adjusted handling of srvSOLiveSales service to start it if it was running at the beginning of the script.
+# - Ensured PDTWiFi.exe and PDTWiFi64.exe are restarted if they were previously running.
 # - Enhanced comments and chatty output.
 
 # Initialize start time
@@ -211,12 +212,12 @@ Write-Host "[Part 9/11] Ensuring Smart Office processes are closed..." -Foregrou
 Do {
     Check-Process -ProcessName "Sm32"
     Check-Process -ProcessName "Sm32Main"
-} Until (-Not (Get-Process -Name "Sm32" -ErrorAction SilentlyContinue) -And -Not (Get-Process -Name "Sm32Main" -ErrorAction SilentlyContinue))
+} Until (-Not (Get-Process -Name "Sm32" -ErrorAction SilentlyContinue) -And -Not (Get
+
+-Process -Name "Sm32Main" -ErrorAction SilentlyContinue))
 
 # Part 10 - Set Permissions for StationMaster Folder
 # -----
-
-
 Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -ForegroundColor Cyan
 
 # Suppress output of changing StationMaster folder permissions
@@ -226,8 +227,9 @@ icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C 
 # -----
 Write-Host "[Part 11/11] Reverting changes..." -ForegroundColor Cyan
 
-# Revert srvSOLiveSales service if managed
-Manage-Service -ServiceName $ServiceName -WasRunning $true
+# Restart srvSOLiveSales service if it was running
+Manage-Service -ServiceName $ServiceName -Action "Enable"
+Manage-Service -ServiceName $ServiceName -Action "Start"
 
 # Restart PDTWiFi.exe and PDTWiFi64.exe if they were previously running
 $ProcessesToRestart = @("PDTWiFi", "PDTWiFi64")
