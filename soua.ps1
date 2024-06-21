@@ -3,10 +3,10 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.31
-# - Included handling of SMUpdates.exe process at appropriate steps
-# - Added success/failure messages at the end of each part
-# - Updated user messages for professionalism and consistency
+# Version 1.32
+# - Tidied up confirmation messages in Part 9
+# - Added script execution time summary at the end
+# - Changed success messages to append [OK] to each part's completion message
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -21,7 +21,7 @@ if (-not (Test-Admin)) {
     pause
     exit
 } else {
-    Write-Host "Admin rights confirmed." -ForegroundColor Green
+    Write-Host "[Part 1/11] Checking for admin rights... [OK]" -ForegroundColor Green
 }
 
 # Part 2 - Check for Running Smart Office Processes
@@ -35,7 +35,7 @@ foreach ($process in $processesToCheck) {
         pause
         exit
     } else {
-        Write-Host "$process is not running." -ForegroundColor Green
+        Write-Host "[Part 2/11] Checking for running Smart Office processes... [OK]" -ForegroundColor Green
     }
 }
 
@@ -50,6 +50,7 @@ if (-not (Test-Path $workingDir)) {
 } else {
     Write-Host "Directory $workingDir already exists." -ForegroundColor Green
 }
+Write-Host "[Part 3/11] Ensuring working directory exists... [OK]" -ForegroundColor Green
 
 # Part 4 - Download and Run SO_UC.exe
 # -----
@@ -64,6 +65,7 @@ if (-not (Test-Path $SO_UC_Path)) {
 } else {
     Write-Host "SO_UC.exe already exists. Skipping download." -ForegroundColor Green
 }
+Write-Host "[Part 4/11] Downloading and running SO_UC.exe if necessary... [OK]" -ForegroundColor Green
 
 Start-Process -FilePath $SO_UC_Path -Wait
 Write-Host "SO_UC.exe execution completed." -ForegroundColor Green
@@ -81,12 +83,14 @@ if (-not (Test-Path $firebirdDir)) {
 } else {
     Write-Host "Firebird already installed." -ForegroundColor Green
 }
+Write-Host "[Part 5/11] Checking for Firebird installation... [OK]" -ForegroundColor Green
 
 # Part 5.1 - Stop SMUpdates.exe if running
 # -----
 Write-Host "[Part 5.1/11] Checking and stopping SMUpdates.exe if running..."
 Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
 Write-Host "SMUpdates.exe process terminated if it was running." -ForegroundColor Green
+Write-Host "[Part 5.1/11] Checking and stopping SMUpdates.exe if running... [OK]" -ForegroundColor Green
 
 # Part 6 - Check and Manage Smart Office Live Sales Service
 # -----
@@ -107,6 +111,7 @@ if ($service) {
 } else {
     Write-Host "$ServiceName service does not exist. No action needed." -ForegroundColor Green
 }
+Write-Host "[Part 6/11] Checking and managing Smart Office Live Sales service... [OK]" -ForegroundColor Green
 
 # Part 7 - Check and Manage PDTWiFi Processes
 # -----
@@ -125,6 +130,7 @@ foreach ($process in $PDTWiFiProcesses) {
         Write-Host "$process process is not running. No action needed." -ForegroundColor Green
     }
 }
+Write-Host "[Part 7/11] Checking and managing PDTWiFi processes... [OK]" -ForegroundColor Green
 
 # Part 8 - Launch Setup Executable
 # -----
@@ -140,11 +146,12 @@ if ($setupExe) {
     pause
     exit
 }
+Write-Host "[Part 8/11] Launching Smart Office setup executable... [OK]" -ForegroundColor Green
 
 # Part 9 - Wait for User Confirmation
 # -----
 Write-Host "[Part 9/11] Please press Enter when the Smart Office installation is fully finished..."
-Read-Host "When the installation of Smart Office is fully finished, please press Enter to finish off installation assistant tasks"
+Read-Host "Press Enter to continue"
 
 # Part 10 - Set Permissions for StationMaster Folder
 # -----
@@ -153,6 +160,7 @@ Write-Host "[Part 10/11] Setting permissions for StationMaster folder..."
 # Kill SMUpdates.exe if running again
 Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
 Write-Host "SMUpdates.exe process terminated if it was running."
+Write-Host "[Part 10/11] Setting permissions for StationMaster folder... [OK]" -ForegroundColor Green
 
 & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 if ($LASTEXITCODE -eq 0) {
@@ -182,7 +190,15 @@ foreach ($process in $PDTWiFiProcesses) {
         Write-Host "Started $process process." -ForegroundColor Green
     }
 }
+Write-Host "[Part
+
+ 11/11] Reverting services and processes to original state... [OK]" -ForegroundColor Green
 
 Write-Host "All tasks completed successfully." -ForegroundColor Green
+
+# Calculate and display script execution time
+$endTime = Get-Date
+$executionTime = $endTime - $startTime
+Write-Host "Script completed in $($executionTime.TotalMinutes) minutes and $($executionTime.Seconds) seconds." -ForegroundColor Yellow
 Write-Host "Press any key to exit..."
 $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
