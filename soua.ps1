@@ -1,208 +1,188 @@
-# Script_Name: soua.ps1
+# SOUA.ps1
 # ---
 # This script assists in installing Smart Office.
+# It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
 # Version 1.31
-# - Improved readability and clarity of comments.
-# - Standardized user messages for consistency.
-# - Separated functionality into clear parts.
-# - Managed service and process states cleanly and consistently.
-
-# Start time for the script
-$startTime = Get-Date
-
-# Function to check and manage services
-function Manage-Service {
-    param (
-        [string]$ServiceName,
-        [string]$Action
-    )
-    $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-    if ($null -ne $service) {
-        switch ($Action) {
-            "Stop" {
-                if ($service.Status -eq 'Running') {
-                    Write-Host "Stopping $ServiceName service..." -ForegroundColor Yellow
-                    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-                    $service.WaitForStatus('Stopped', '00:01:00')
-                    Write-Host "$ServiceName service stopped." -ForegroundColor Green
-                }
-            }
-            "Disable" {
-                if ($service.StartType -ne 'Disabled') {
-                    Write-Host "Disabling $ServiceName service..." -ForegroundColor Yellow
-                    Set-Service -Name $ServiceName -StartupType Disabled
-                    Write-Host "$ServiceName service disabled." -ForegroundColor Green
-                }
-            }
-            "Enable" {
-                if ($service.StartType -eq 'Disabled') {
-                    Write-Host "Enabling $ServiceName service..." -ForegroundColor Yellow
-                    Set-Service -Name $ServiceName -StartupType Automatic
-                    Write-Host "$ServiceName service enabled." -ForegroundColor Green
-                }
-            }
-            "Start" {
-                if ($service.Status -ne 'Running') {
-                    Write-Host "Starting $ServiceName service..." -ForegroundColor Yellow
-                    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
-                    $service.WaitForStatus('Running', '00:01:00')
-                    Write-Host "$ServiceName service started successfully." -ForegroundColor Green
-                }
-            }
-        }
-    }
-}
+# - Included handling of SMUpdates.exe process at appropriate steps
+# - Added success/failure messages at the end of each part
+# - Updated user messages for professionalism and consistency
 
 # Part 1 - Check for Admin Rights
 # -----
-Write-Host "[Part 1/11] Checking for administrative rights..." -ForegroundColor Cyan
-if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Host "This script requires administrative rights. Please run as administrator." -ForegroundColor Red
-    Read-Host "Press any key to exit..."
-    exit
+Write-Host "[Part 1/11] Checking for admin rights..."
+function Test-Admin {
+    $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
-Write-Host "[Part 1/11] Check for administrative rights completed successfully." -ForegroundColor Green
+
+if (-not (Test-Admin)) {
+    Write-Host "Script is not running with admin rights. Please run as administrator." -ForegroundColor Red
+    pause
+    exit
+} else {
+    Write-Host "Admin rights confirmed." -ForegroundColor Green
+}
 
 # Part 2 - Check for Running Smart Office Processes
 # -----
-Write-Host "[Part 2/11] Checking for running Smart Office processes..." -ForegroundColor Cyan
-$smartOfficeProcesses = @("Sm32Main", "Sm32")
-foreach ($process in $smartOfficeProcesses) {
+Write-Host "[Part 2/11] Checking for running Smart Office processes..."
+$processesToCheck = @("Sm32Main", "Sm32")
+
+foreach ($process in $processesToCheck) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-        Write-Host "Process $process is running. Please close it before proceeding." -ForegroundColor Red
-        Read-Host "Press any key to exit..."
+        Write-Host "$process is running. Please close it before proceeding." -ForegroundColor Red
+        pause
         exit
+    } else {
+        Write-Host "$process is not running." -ForegroundColor Green
     }
 }
-Write-Host "[Part 2/11] Check for running Smart Office processes completed successfully." -ForegroundColor Green
 
 # Part 3 - Create Directory if it Doesn't Exist
 # -----
-Write-Host "[Part 3/11] Creating C:\winsm directory if it doesn't exist..." -ForegroundColor Cyan
-if (-not (Test-Path -Path "C:\winsm")) {
-    New-Item -Path "C:\winsm" -ItemType Directory | Out-Null
-    Write-Host "Directory C:\winsm created." -ForegroundColor Green
+Write-Host "[Part 3/11] Ensuring working directory exists..."
+$workingDir = "C:\winsm"
+
+if (-not (Test-Path $workingDir)) {
+    New-Item -Path $workingDir -ItemType Directory | Out-Null
+    Write-Host "Directory $workingDir created." -ForegroundColor Green
 } else {
-    Write-Host "Directory C:\winsm already exists." -ForegroundColor Yellow
+    Write-Host "Directory $workingDir already exists." -ForegroundColor Green
 }
-Write-Host "[Part 3/11] Create directory completed successfully." -ForegroundColor Green
 
 # Part 4 - Download and Run SO_UC.exe
 # -----
-Write-Host "[Part 4/11] Checking for SO_UC.exe..." -ForegroundColor Cyan
-$soUcExePath = "C:\winsm\SO_UC.exe"
-$soUcExeUrl = "https://github.com/SMControl/SO_UC/blob/main/SO_UC.exe"
-if (-not (Test-Path -Path $soUcExePath)) {
-    try {
-        Write-Host "Downloading SO_UC.exe..." -ForegroundColor Yellow
-        Invoke-WebRequest -Uri $soUcExeUrl -OutFile $soUcExePath
-        Write-Host "SO_UC.exe downloaded successfully." -ForegroundColor Green
-    } catch {
-        Write-Host "Failed to download SO_UC.exe. Please check your internet connection and try again." -ForegroundColor Red
-        Read-Host "Press any key to exit..."
-        exit
-    }
+Write-Host "[Part 4/11] Downloading and running SO_UC.exe if necessary..."
+$SO_UC_Path = "$workingDir\SO_UC.exe"
+$SO_UC_URL = "https://github.com/SMControl/SO_UC/blob/main/SO_UC.exe"
+
+if (-not (Test-Path $SO_UC_Path)) {
+    Write-Host "SO_UC.exe not found. Downloading..."
+    Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
+    Write-Host "Download completed." -ForegroundColor Green
 } else {
-    Write-Host "SO_UC.exe already exists." -ForegroundColor Yellow
+    Write-Host "SO_UC.exe already exists. Skipping download." -ForegroundColor Green
 }
-Write-Host "Running SO_UC.exe..." -ForegroundColor Yellow
-Start-Process -FilePath $soUcExePath -Wait
-Write-Host "SO_UC.exe finished running." -ForegroundColor Green
-Write-Host "[Part 4/11] SO_UC.exe check and run completed successfully." -ForegroundColor Green
+
+Start-Process -FilePath $SO_UC_Path -Wait
+Write-Host "SO_UC.exe execution completed." -ForegroundColor Green
 
 # Part 5 - Check for Firebird Installation
 # -----
-Write-Host "[Part 5/11] Checking for Firebird installation..." -ForegroundColor Cyan
+Write-Host "[Part 5/11] Checking for Firebird installation..."
 $firebirdDir = "C:\Program Files (x86)\Firebird"
-$firebirdInstallerUrl = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
-if (-not (Test-Path -Path $firebirdDir)) {
-    Write-Host "Firebird is not installed. Running the online installer..." -ForegroundColor Yellow
-    Invoke-Expression -Command "irm $firebirdInstallerUrl | iex"
+$firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
+
+if (-not (Test-Path $firebirdDir)) {
+    Write-Host "Firebird not found. Installing..."
+    Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
     Write-Host "Firebird installation completed." -ForegroundColor Green
 } else {
-    Write-Host "Firebird is already installed." -ForegroundColor Yellow
+    Write-Host "Firebird already installed." -ForegroundColor Green
 }
-Write-Host "[Part 5/11] Check for Firebird installation completed successfully." -ForegroundColor Green
+
+# Part 5.1 - Stop SMUpdates.exe if running
+# -----
+Write-Host "[Part 5.1/11] Checking and stopping SMUpdates.exe if running..."
+Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+Write-Host "SMUpdates.exe process terminated if it was running." -ForegroundColor Green
 
 # Part 6 - Check and Manage Smart Office Live Sales Service
 # -----
-Write-Host "[Part 6/11] Checking and managing Smart Office Live Sales service..." -ForegroundColor Cyan
+Write-Host "[Part 6/11] Checking and managing Smart Office Live Sales service..."
 $ServiceName = "srvSOLiveSales"
-$Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-if ($Service -ne $null -and $Service.Status -eq 'Running') {
-    Manage-Service -ServiceName $ServiceName -Action "Stop"
-    Manage-Service -ServiceName $ServiceName -Action "Disable"
+$service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+
+$initialServiceState = $null
+if ($service) {
+    $initialServiceState = $service.Status
+    if ($service.Status -eq 'Running') {
+        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        Set-Service -Name $ServiceName -StartupType Disabled
+        Write-Host "Stopped and disabled $ServiceName service." -ForegroundColor Green
+    } else {
+        Write-Host "$ServiceName service is not running. No action needed." -ForegroundColor Green
+    }
+} else {
+    Write-Host "$ServiceName service does not exist. No action needed." -ForegroundColor Green
 }
-Write-Host "[Part 6/11] Check and manage Smart Office Live Sales service completed successfully." -ForegroundColor Green
 
 # Part 7 - Check and Manage PDTWiFi Processes
 # -----
-Write-Host "[Part 7/11] Checking and managing PDTWiFi processes..." -ForegroundColor Cyan
-$ProcessesToCheck = @("PDTWiFi", "PDTWiFi64")
-$ProcessesClosed = @()
-foreach ($ProcessName in $ProcessesToCheck) {
-    $Process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
-    if ($Process) {
-        Write-Host "Stopping $ProcessName process..." -ForegroundColor Yellow
-        Stop-Process -Name $ProcessName -Force -ErrorAction SilentlyContinue
-        $ProcessesClosed += $ProcessName
-        Write-Host "$ProcessName process stopped." -ForegroundColor Green
+Write-Host "[Part 7/11] Checking and managing PDTWiFi processes..."
+$PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
+$initialPDTWiFiStates = @{}
+
+foreach ($process in $PDTWiFiProcesses) {
+    $p = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if ($p) {
+        $initialPDTWiFiStates[$process] = $true
+        Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
+        Write-Host "Stopped $process process." -ForegroundColor Green
+    } else {
+        $initialPDTWiFiStates[$process] = $false
+        Write-Host "$process process is not running. No action needed." -ForegroundColor Green
     }
 }
-Write-Host "[Part 7/11] Check and manage PDTWiFi processes completed successfully." -ForegroundColor Green
 
 # Part 8 - Launch Setup Executable
 # -----
-Write-Host "[Part 8/11] Launching Smart Office setup executable..." -ForegroundColor Cyan
-$setupExePath = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "Setup*.exe" | Select-Object -First 1
-if ($setupExePath) {
-    Start-Process -FilePath $setupExePath.FullName -Wait
-    Write-Host "Smart Office setup executable finished." -ForegroundColor Green
+Write-Host "[Part 8/11] Launching Smart Office setup executable..."
+$setupDir = "$workingDir\SmartOffice_Installer"
+$setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+if ($setupExe) {
+    Start-Process -FilePath $setupExe.FullName -Wait
+    Write-Host "Smart Office setup completed." -ForegroundColor Green
 } else {
-    Write-Host "Setup executable not found. Please ensure it is located in C:\winsm\SmartOffice_Installer." -ForegroundColor Red
-    Read-Host "Press any key to exit..."
+    Write-Host "Setup executable not found in $setupDir." -ForegroundColor Red
+    pause
     exit
 }
-Write-Host "[Part 8/11] Launch Smart Office setup executable completed successfully." -ForegroundColor Green
 
 # Part 9 - Wait for User Confirmation
 # -----
-Write-Host "[Part 9/11] Waiting for user confirmation..." -ForegroundColor Cyan
-Read-Host "When installation of Smart Office is fully finished, please press Enter to finish off installation assistant tasks."
-Write-Host "[Part 9/11] User confirmation completed successfully." -ForegroundColor Green
+Write-Host "[Part 9/11] Please press Enter when the Smart Office installation is fully finished..."
+Read-Host "When the installation of Smart Office is fully finished, please press Enter to finish off installation assistant tasks"
 
 # Part 10 - Set Permissions for StationMaster Folder
 # -----
-Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -ForegroundColor Cyan
-icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C | Out-Null
-Write-Host "Permissions for StationMaster
+Write-Host "[Part 10/11] Setting permissions for StationMaster folder..."
 
- folder set." -ForegroundColor Green
-Write-Host "[Part 10/11] Set permissions for StationMaster folder completed successfully." -ForegroundColor Green
+# Kill SMUpdates.exe if running again
+Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+Write-Host "SMUpdates.exe process terminated if it was running."
+
+& icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "Permissions for StationMaster folder set successfully." -ForegroundColor Green
+} else {
+    Write-Host "Failed to set permissions for StationMaster folder." -ForegroundColor Red
+}
 
 # Part 11 - Revert Services and Processes to Original State
 # -----
-Write-Host "[Part 11/11] Reverting services and processes to their original state..." -ForegroundColor Cyan
-if ($Service -ne $null -and $Service.Status -eq 'Stopped') {
-    Manage-Service -ServiceName $ServiceName -Action "Enable"
-    Manage-Service -ServiceName $ServiceName -Action "Start"
+Write-Host "[Part 11/11] Reverting services and processes to original state..."
+
+# Revert srvSOLiveSales service
+if ($initialServiceState -eq 'Running') {
+    Set-Service -Name $ServiceName -StartupType Automatic
+    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    Write-Host "$ServiceName service re-enabled and started successfully." -ForegroundColor Green
+} elseif ($initialServiceState -eq 'Stopped') {
+    Set-Service -Name $ServiceName -StartupType Manual
+    Write-Host "$ServiceName service set back to manual startup." -ForegroundColor Green
 }
 
-foreach ($ProcessName in $ProcessesClosed) {
-    $ProcessPath = "C:\Program Files (x86)\StationMaster\$ProcessName.exe"
-    if (Test-Path -Path $ProcessPath) {
-        Write-Host "Starting $ProcessName process..." -ForegroundColor Yellow
-        Start-Process -FilePath $ProcessPath
-        Write-Host "$ProcessName process started." -ForegroundColor Green
+# Revert PDTWiFi processes
+foreach ($process in $PDTWiFiProcesses) {
+    if ($initialPDTWiFiStates[$process]) {
+        Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process.exe"
+        Write-Host "Started $process process." -ForegroundColor Green
     }
 }
-Write-Host "[Part 11/11] Revert services and processes to their original state completed successfully." -ForegroundColor Green
 
-# Total script run time
-$endTime = Get-Date
-$totalTime = $endTime - $startTime
-Write-Host "Total script run time: $totalTime" -ForegroundColor Cyan
-
-# End of script
-Read-Host "Press any key to exit..."
+Write-Host "All tasks completed successfully." -ForegroundColor Green
+Write-Host "Press any key to exit..."
+$null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
