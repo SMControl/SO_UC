@@ -3,8 +3,8 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.11
-# - Added recording and restoring state for "srvSOLiveSales" service.
+# Version 1.12
+# - Enhanced handling of srvSOLiveSales service according to requirements.
 
 # Initialize start time
 $startTime = Get-Date
@@ -121,15 +121,29 @@ If (-Not (Test-Path -Path "C:\Program Files (x86)\Firebird")) {
 # -----
 Write-Host "[Part 7/11] Managing processes and services..." -ForegroundColor Cyan
 
-# Stop and disable srvSOLiveSales service if enabled
-$ServiceName = "srvSOLiveSales"
-$Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+# Function to stop and disable the service if it exists and is running
+Function Manage-Service {
+    param (
+        [string]$ServiceName
+    )
+    $Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    If ($Service -ne $null -and $Service.Status -eq 'Running') {
+        Stop-Service -Name $ServiceName
+        Set-Service -Name $ServiceName -StartupType Disabled
+        Write-Host "Stopped and disabled $ServiceName service." -ForegroundColor Yellow
+        return $true
+    }
+    return $false
+}
 
-$ServiceWasRunning = $false
-If ($Service -ne $null -and $Service.Status -eq 'Running') {
-    $ServiceWasRunning = $true
-    Stop-Service -Name $ServiceName
-    Set-Service -Name $ServiceName -StartupType Disabled
+$ServiceName = "srvSOLiveSales"
+$ServiceManaged = $false
+
+# Check and manage srvSOLiveSales service
+If (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    $ServiceManaged = Manage-Service -ServiceName $ServiceName
+} Else {
+    Write-Host "$ServiceName service does not exist. Ignoring." -ForegroundColor Yellow
 }
 
 # Ensure only one instance of firebird.exe is running
@@ -170,12 +184,26 @@ icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C 
 # -----
 Write-Host "[Part 11/11] Reverting services to original state..." -ForegroundColor Cyan
 
-# Start and set srvSOLiveSales service back to its original state
-If ($Service -ne $null) {
-    If ($ServiceWasRunning) {
-        Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+# Function to start and set the service back to its original state
+Function Revert-Service {
+    param (
+        [string]$ServiceName,
+        [bool]$WasRunning
+    )
+    $Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    If ($Service -ne $null) {
+        If ($WasRunning) {
+            Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+            Write-Host "Started $ServiceName service." -ForegroundColor Yellow
+        }
+        Set-Service -Name $ServiceName -StartupType Automatic
+        Write-Host "Set $ServiceName service to Automatic startup." -ForegroundColor Yellow
     }
-    Set-Service -Name $ServiceName -StartupType Automatic
+}
+
+# Revert srvSOLiveSales service if managed
+If ($ServiceManaged) {
+    Revert-Service -ServiceName $ServiceName -WasRunning $true
 }
 
 # Initialize end time
@@ -188,5 +216,11 @@ Write-Host "Script completed in $($totalTime.ToString('hh\:mm\:ss'))" -Foregroun
 # Summary
 Write-Host "`nSummary:" -ForegroundColor Yellow
 Write-Host "Processes Closed: $($ProcessesClosed -join ', ')" -ForegroundColor Yellow
-Write-Host "Service Status (srvSOLiveSales): $((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status)" -ForegroundColor Yellow
+If ($ServiceManaged) {
+    Write-Host "Service Status ($
+
+ServiceName): $((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status)" -ForegroundColor Yellow
+} Else {
+    Write-Host "Service $ServiceName was not managed." -ForegroundColor Yellow
+}
 Read-Host "Press any key to exit..."
