@@ -4,10 +4,9 @@
 # It performs various checks, downloads necessary files if needed, manages processes and services,
 # and sets permissions for specific folders.
 # ---
-# Version 1.25
-# - Improved comments and readability.
-# - Added messages for PDTWiFi.exe and PDTWiFi64.exe operations.
-# - Added summary at the end of the script.
+# Version 1.26
+# - Fix permissions in part 10
+
 
 # Initialize start time
 $startTime = Get-Date
@@ -224,10 +223,12 @@ Do {
 # -----
 Write-Host "[Part 10/11] Setting permissions for StationMaster folder..." -ForegroundColor Cyan
 
-# Suppress output
+# Set permissions for StationMaster folder
+Write-Host "Setting permissions for StationMaster folder" -ForegroundColor Cyan
 
- of changing StationMaster folder permissions
+# Grant full control to everyone for StationMaster folder
 icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C | Out-Null
+
 
 # Part 11 - Revert Changes
 # -----
