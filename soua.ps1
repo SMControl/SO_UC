@@ -3,8 +3,8 @@
 # This script assists in installing Smart Office.
 # It performs various checks, downloads necessary files if needed, and manages processes.
 # ---
-# Version 1.08
-# - Updated SO_UC.exe download URL.
+# Version 1.09
+# - Added summary at the end to include details about closed/reopened processes and service status.
 
 # Initialize start time
 $startTime = Get-Date
@@ -39,10 +39,15 @@ Function Check-Process {
     }
 }
 
-Check-Process -ProcessName "Sm32Main"
-Check-Process -ProcessName "Sm32"
-Check-Process -ProcessName "PDTWiFi"
-Check-Process -ProcessName "PDTWiFi64"
+$ProcessesToClose = @("Sm32Main", "Sm32", "PDTWiFi", "PDTWiFi64")
+$ProcessesClosed = @()
+
+ForEach ($ProcessName in $ProcessesToClose) {
+    If (Get-Process -Name $ProcessName -ErrorAction SilentlyContinue) {
+        Stop-Process -Name $ProcessName -ErrorAction SilentlyContinue
+        $ProcessesClosed += $ProcessName
+    }
+}
 
 # Part 3 - Create Directory and Change Directory
 # -----
@@ -116,14 +121,16 @@ If (-Not (Test-Path -Path "C:\Program Files (x86)\Firebird")) {
 # -----
 Write-Host "[Part 7/11] Managing processes and services..." -ForegroundColor Cyan
 
-# Close PDTWiFi.exe if running
-Stop-Process -Name "PDTWiFi" -ErrorAction SilentlyContinue
-Stop-Process -Name "PDTWiFi64" -ErrorAction SilentlyContinue
+# Stop and disable Smart Office Live Sales (SO Live Sales) if enabled
+$ServiceName = "Smart Office Live Sales"
+$AltServiceName = "SO Live Sales"
 
-# Stop and disable Smart Office Live Sales if enabled
-If ((Get-Service -Name "Smart Office Live Sales" -ErrorAction SilentlyContinue).Status -eq 'Running') {
-    Stop-Service -Name "Smart Office Live Sales"
-    Set-Service -Name "Smart Office Live Sales" -StartupType Disabled
+If ((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status -eq 'Running') {
+    Stop-Service -Name $ServiceName
+    Set-Service -Name $ServiceName -StartupType Disabled
+} ElseIf ((Get-Service -Name $AltServiceName -ErrorAction SilentlyContinue).Status -eq 'Running') {
+    Stop-Service -Name $AltServiceName
+    Set-Service -Name $AltServiceName -StartupType Disabled
 }
 
 # Ensure only one instance of firebird.exe is running
@@ -164,8 +171,9 @@ icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C 
 # -----
 Write-Host "[Part 11/11] Reverting services to original state..." -ForegroundColor Cyan
 
-Start-Service -Name "Smart Office Live Sales" -ErrorAction SilentlyContinue
-Set-Service -Name "Smart Office Live Sales" -StartupType Automatic
+# Start and set Smart Office Live Sales (SO Live Sales) service back to Automatic
+Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+Set-Service -Name $ServiceName -StartupType Automatic
 
 # Initialize end time
 $endTime = Get-Date
@@ -173,4 +181,9 @@ $endTime = Get-Date
 # Calculate and display total script run time
 $totalTime = New-TimeSpan -Start $startTime -End $endTime
 Write-Host "Script completed in $($totalTime.ToString('hh\:mm\:ss'))" -ForegroundColor Green
+
+# Summary
+Write-Host "`nSummary:" -ForegroundColor Yellow
+Write-Host "Processes Closed: $($ProcessesClosed -join ', ')" -ForegroundColor Yellow
+Write-Host "Service Status (Smart Office Live Sales): $((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status)" -ForegroundColor Yellow
 Read-Host "Press any key to exit..."
