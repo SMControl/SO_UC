@@ -3,7 +3,7 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.70
+# Version 1.71
 # - Added red-colored error messages for better visibility.
 # - Updated flagfile line in part 9
 # - cleaned up end messages
@@ -223,6 +223,7 @@ if ($startStep -le 9) {
 # -----
 if ($startStep -le 10) {
     Write-Host "[Part 10/12] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
+    Write-Host "[WARNING] Rebooting is currently not supported in this version of the script." -ForegroundColor Yellow
     Read-Host
 
     # Check for Running Smart Office Processes Again
@@ -233,12 +234,8 @@ if ($startStep -le 10) {
             $processRunning = $true
             Write-Host "Smart Office is still running. Please close it and press Enter to continue..." -ForegroundColor White
             Read-Host
-       
-
  }
     }
-
-    Write-Host "[WARNING] Rebooting is not supported in this version of the script." -ForegroundColor Yellow
 
     Update-FlagFile -step 11 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
