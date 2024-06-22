@@ -3,11 +3,10 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.64
-# - Implemented logic to resume script from step 10 if flag file exists.
-# - Ensured error messages are displayed in red.
-# - Corrected formatting and removed unnecessary ASCII art.
-# - Updated final script messages for clarity.
+# Version 1.61
+# - Added red-colored error messages for better visibility.
+# - Updated flagfile line in part 9
+# - cleaned up end messages
 
 # Initialize script start time
 $startTime = Get-Date
@@ -43,30 +42,13 @@ function Read-FlagFile {
     }
 }
 
-# Function to delete the flag file
-function Delete-FlagFile {
-    if (Test-Path $flagFilePath) {
-        Remove-Item -Path $flagFilePath -Force
-    }
-}
-
-# Determine the step to start from
+# Check for flag file to determine starting point
 $flagData = Read-FlagFile
+$startStep = $flagData.Step
 
-if (Test-Path $flagFilePath) {
-    $startStep = $flagData.Step
-} else {
-    $startStep = 1
-}
-
-# Adjust to start from step 10 if flag file is present
-if ($startStep -le 10) {
-    $startStep = 10
-}
-
-# Part 1 - Check for Admin Rights
-# -----
-if ($startStep -le 1) {
+if ($startStep -eq 0) {
+    # Part 1 - Check for Admin Rights
+    # -----
     Write-Host "[Part 1/12] Checking for admin rights..." -ForegroundColor Green
     function Test-Admin {
         $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -74,7 +56,7 @@ if ($startStep -le 1) {
     }
 
     if (-not (Test-Admin)) {
-        Write-Host "[Error] This script requires administrator privileges. Please run as an administrator." -ForegroundColor Red
+        Write-Host "Error: Administrator rights required to run this script. Exiting." -ForegroundColor Red
         pause
         exit
     }
@@ -89,7 +71,7 @@ if ($startStep -le 2) {
     $processesToCheck = @("Sm32Main", "Sm32")
     foreach ($process in $processesToCheck) {
         if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-            Write-Host "[Error] Smart Office is currently running. Please close it before running this script." -ForegroundColor Red
+            Write-Host "Error: Smart Office process '$process' is running. Close it and retry." -ForegroundColor Red
             pause
             exit
         }
@@ -104,7 +86,12 @@ if ($startStep -le 3) {
     Write-Host "[Part 3/12] Ensuring working directory exists..." -ForegroundColor Green
     $workingDir = "C:\winsm"
     if (-not (Test-Path $workingDir)) {
-        New-Item -Path $workingDir -ItemType Directory | Out-Null
+        try {
+            New-Item -Path $workingDir -ItemType Directory | Out-Null
+        } catch {
+            Write-Host "Error creating directory '$workingDir': $_" -ForegroundColor Red
+            exit
+        }
     }
 
     Update-FlagFile -step 4 -serviceState @{} -processesStopped @()
@@ -121,7 +108,12 @@ Write-Host "[WARNING] It's responsible for retrieving the latest Smart Office Se
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
-    Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
+    try {
+        Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
+    } catch {
+        Write-Host "Error downloading SO_UC.exe: $_" -ForegroundColor Red
+        exit
+    }
 }
 
 # Start SO_UC.exe hidden
@@ -129,7 +121,12 @@ $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
 $processStartInfo.FileName = $SO_UC_Path
 $processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
-Start-Process -FilePath $processStartInfo.FileName -Wait -WindowStyle $processStartInfo.WindowStyle
+try {
+    Start-Process -FilePath $processStartInfo.FileName -Wait -WindowStyle $processStartInfo.WindowStyle
+} catch {
+    Write-Host "Error starting SO_UC.exe: $_" -ForegroundColor Red
+    exit
+}
 
 # Part 5 - Check for Firebird Installation
 # -----
@@ -138,7 +135,12 @@ if ($startStep -le 5) {
     $firebirdDir = "C:\Program Files (x86)\Firebird"
     $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
     if (-not (Test-Path $firebirdDir)) {
-        Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
+        try {
+            Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
+        } catch {
+            Write-Host "Error installing Firebird: $_" -ForegroundColor Red
+            exit
+        }
     }
 
     Update-FlagFile -step 6 -serviceState @{} -processesStopped @()
@@ -148,7 +150,12 @@ if ($startStep -le 5) {
 # -----
 if ($startStep -le 6) {
     Write-Host "[Part 6/12] Checking and stopping SMUpdates.exe if running..." -ForegroundColor Green
-    Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+    try {
+        Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+    } catch {
+        Write-Host "Error stopping SMUpdates.exe: $_" -ForegroundColor Red
+        exit
+    }
 
     Update-FlagFile -step 7 -serviceState @{} -processesStopped @("SMUpdates")
 }
@@ -164,8 +171,13 @@ if ($startStep -le 7) {
     if ($service) {
         $initialServiceState = $service.Status
         if ($service.Status -eq 'Running') {
-            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-            Set-Service -Name $ServiceName -StartupType Disabled
+            try {
+                Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+                Set-Service -Name $ServiceName -StartupType Disabled
+            } catch {
+                Write-Host "Error stopping service '$ServiceName': $_" -ForegroundColor Red
+                exit
+            }
         }
     }
 
@@ -179,9 +191,14 @@ if ($startStep -le 8) {
     Write-Host "[Part 8/12] Checking and managing PDTWiFi processes..." -ForegroundColor Green
     $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
     foreach ($process in $PDTWiFiProcesses) {
-        $p = Get-Process -Name $process -ErrorAction SilentlyContinue
-        if ($p) {
-            Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
+        try {
+            $p = Get-Process -Name $process -ErrorAction SilentlyContinue
+            if ($p) {
+                Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
+            }
+        } catch {
+            Write-Host "Error managing process '$process': $_" -ForegroundColor Red
+            exit
         }
     }
 
@@ -225,40 +242,30 @@ if ($startStep -le 10) {
 # Part 11 - Set Permissions for StationMaster Folder
 # -----
 Write-Host "[Part 11/12] Setting permissions for StationMaster folder..." -ForegroundColor Green
-& icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T
+try {
+    & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+} catch {
+    Write-Host "Error setting permissions for StationMaster folder: $_" -ForegroundColor Red
+}
 
- /C > $null
+Update-FlagFile -step 12 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 
-# Revert Services and Processes to Original State
+# Part 12 - Clean Up and Finish
 # -----
-Write-Host "[Revert] Reverting services and processes to original state..." -ForegroundColor Yellow
-# Revert srvSOLiveSales service
-if ($initialServiceState -eq 'Running') {
-    Set-Service -Name $ServiceName -StartupType Automatic
-    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
-} elseif ($initialServiceState -eq 'Stopped') {
-    Set-Service -Name $ServiceName -StartupType Manual
+Write-Host "[Part 12/12] Cleaning up and finishing script..." -ForegroundColor Green
+
+# Delete the flag file
+try {
+    Remove-Item -Path $flagFilePath -Force
+} catch {
+    Write-Host "Error deleting flag file: $_" -ForegroundColor Red
 }
 
-# Revert PDTWiFi processes
-foreach ($process in $PDTWiFiProcesses) {
-    $p = Get-Process -Name $process -ErrorAction SilentlyContinue
-    if (!$p) {
-        Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process.exe"
-    }
-}
-
-Write-Host " "  # Blank line for separation
+Write-Host " "
 
 # Calculate and display script execution time
 $endTime = Get-Date
 $executionTime = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
-Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
-
-# Delete the flag file
-Delete-FlagFile
-
-# Delete the scheduled task (not necessary anymore)
-# Delete-ScheduledTask
+Write-Host "Script completed succesfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
