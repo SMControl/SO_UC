@@ -3,9 +3,8 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.76" -ForegroundColor Green
-# - Removed previous flag file handling.
-# - Simplified flag file implementation.
+Write-Host "Version 1.77" -ForegroundColor Green
+# - start of part 11 - siletnly kill pdtwifi etc
 
 # Initialize script start time
 $startTime = Get-Date
@@ -188,6 +187,13 @@ if ($startStep -le 10) {
 
 # Part 11 - Set Permissions for StationMaster Folder
 # -----
+
+# Silently kill processes PDTWiFi and SMUpdates if running
+$processesToKill = @("PDTWiFi", "PDTWiFi64", "SMUpdates")
+foreach ($process in $processesToKill) {
+    Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
+}
+
 Write-Host "[Part 11/12] Setting permissions for StationMaster folder..." -ForegroundColor Green
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
