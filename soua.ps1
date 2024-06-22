@@ -3,12 +3,23 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.79" -ForegroundColor Green
-# - better define flagfile part
+Write-Host "Version 1.80" -ForegroundColor Green
+# - better define flagfile part and removed part 3
 
 Write-Host "---" -ForegroundColor Green
 # Initialize script start time
 $startTime = Get-Date
+
+# Ensure the directory exists for the flag file
+$winsmDir = "C:\winsm"
+if (-not (Test-Path $winsmDir -PathType Container)) {
+    try {
+        New-Item -Path $winsmDir -ItemType Directory -ErrorAction Stop | Out-Null
+    } catch {
+        # Handle directory creation error silently
+        exit
+    }
+}
 
 # Define the flag file path
 $flagFilePath = "$winsmDir\SOUA_Flag.txt"
@@ -18,15 +29,15 @@ if (Test-Path $flagFilePath -PathType Leaf) {
     $startStep = 10
 } else {
     $startStep = 0
-    # Create flag file
+    # Create flag file silently
     try {
-        New-Item -Path $flagFilePath -ItemType File | Out-Null
-        Write-Host "Flag file created: $flagFilePath" -ForegroundColor Yellow
+        New-Item -Path $flagFilePath -ItemType File -ErrorAction Stop | Out-Null
     } catch {
-        Write-Host "Error creating flag file $flagFilePath: $_" -ForegroundColor Red
+        # Handle flag file creation error silently
         exit
     }
 }
+
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -51,21 +62,6 @@ if ($startStep -le 2) {
         if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
             Write-Host "Error: Smart Office process '$process' is running. Close it and retry." -ForegroundColor Red
             pause
-            exit
-        }
-    }
-}
-
-# Part 3 - Create Directory if it Doesn't Exist
-# -----
-if ($startStep -le 3) {
-    Write-Host "[Part 3/13] Ensuring working directory exists..." -ForegroundColor Green
-    $workingDir = "C:\winsm"
-    if (-not (Test-Path $workingDir)) {
-        try {
-            New-Item -Path $workingDir -ItemType Directory | Out-Null
-        } catch {
-            Write-Host "Error creating directory '$workingDir': $_" -ForegroundColor Red
             exit
         }
     }
