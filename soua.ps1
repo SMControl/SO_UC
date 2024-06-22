@@ -3,7 +3,7 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Wite-Host "Version 1.75" -ForegroundColor Green
+Write-Host "Version 1.76" -ForegroundColor Green
 # - Removed previous flag file handling.
 # - Simplified flag file implementation.
 
@@ -200,11 +200,7 @@ try {
 Write-Host "[Part 12/12] Cleaning up and finishing script..." -ForegroundColor Green
 
 # Delete the flag file
-try {
-    Remove-Item -Path $flagFilePath -Force
-} catch {
-    Write-Host "Error deleting flag file: $_" -ForegroundColor Red
-}
+Remove-Item -Path $flagFilePath -Force -ErrorAction SilentlyContinue
 
 Write-Host " "
 
