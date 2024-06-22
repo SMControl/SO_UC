@@ -3,8 +3,9 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.47
-# - Added scheduled task creation and deletion for handling restarts.
+# Version 1.49
+# - Added scheduled task creation to resume script execution after restart.
+# - Implemented flag file to track service and process changes for reverting in Part 11.
 
 # Initialize script start time
 $startTime = Get-Date
@@ -12,28 +13,43 @@ $startTime = Get-Date
 # Define the flag file path
 $flagFilePath = "$env:LOCALAPPDATA\SOUA_Flag.txt"
 $taskName = "SmartOfficeInstallerResume"
-$taskAction = "PowerShell.exe -File `"$PSCommandPath`""
+$taskAction = "PowerShell.exe"
+$taskArguments = "-ExecutionPolicy Bypass -Command `"irm https://raw.githubusercontent.com/SMControl/SO_UC/main/soua.ps1 | iex`""
 
 # Function to update flag file
 function Update-FlagFile {
-    param ($step)
-    Set-Content -Path $flagFilePath -Value $step
+    param (
+        [string]$step,
+        [string]$serviceState,
+        [string]$processesStopped
+    )
+    $flagData = @{
+        Step = $step
+        ServiceState = $serviceState
+        ProcessesStopped = $processesStopped
+    }
+    $flagData | ConvertTo-Json | Set-Content -Path $flagFilePath -Force
 }
 
 # Function to read flag file
 function Read-FlagFile {
     if (Test-Path $flagFilePath) {
-        return Get-Content -Path $flagFilePath
+        return Get-Content -Path $flagFilePath | ConvertFrom-Json
     } else {
-        return 0
+        return @{
+            Step = 0
+            ServiceState = @{}
+            ProcessesStopped = @()
+        }
     }
 }
 
 # Function to create the scheduled task
 function Create-ScheduledTask {
-    $task = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-File `"$PSCommandPath`""
+    $action = New-ScheduledTaskAction -Execute $taskAction -Argument $taskArguments -WorkingDirectory $env:SystemRoot\System32
     $trigger = New-ScheduledTaskTrigger -AtStartup
-    Register-ScheduledTask -Action $task -Trigger $trigger -TaskName $taskName -Description "Resume Smart Office installation script at startup" -User "SYSTEM" -RunLevel Highest
+    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+    Register-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -TaskName $taskName -Description "Resume Smart Office installation script at startup" -Force
 }
 
 # Function to delete the scheduled task
@@ -41,11 +57,13 @@ function Delete-ScheduledTask {
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
 }
 
-# Create the scheduled task
-Create-ScheduledTask
+# Create the scheduled task (only once at the start)
+if (!(Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue)) {
+    Create-ScheduledTask
+}
 
 # Determine the step to start from
-$startStep = Read-FlagFile
+$startStep = Read-FlagFile | Select-Object -ExpandProperty Step
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -61,7 +79,7 @@ if ($startStep -le 1) {
         exit
     }
 
-    Update-FlagFile -step 2
+    Update-FlagFile -step 2 -serviceState @{} -processesStopped @()
 }
 
 # Part 2 - Check for Running Smart Office Processes
@@ -76,7 +94,7 @@ if ($startStep -le 2) {
         }
     }
 
-    Update-FlagFile -step 3
+    Update-FlagFile -step 3 -serviceState @{} -processesStopped @()
 }
 
 # Part 3 - Create Directory if it Doesn't Exist
@@ -88,7 +106,7 @@ if ($startStep -le 3) {
         New-Item -Path $workingDir -ItemType Directory | Out-Null
     }
 
-    Update-FlagFile -step 4
+    Update-FlagFile -step 4 -serviceState @{} -processesStopped @()
 }
 
 # Part 4 - Download and Run SO_UC.exe
@@ -102,7 +120,7 @@ if ($startStep -le 4) {
     }
     Start-Process -FilePath $SO_UC_Path -Wait
 
-    Update-FlagFile -step 5
+    Update-FlagFile -step 5 -serviceState @{} -processesStopped @()
 }
 
 # Part 5 - Check for Firebird Installation
@@ -115,7 +133,7 @@ if ($startStep -le 5) {
         Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
     }
 
-    Update-FlagFile -step 6
+    Update-FlagFile -step 6 -serviceState @{} -processesStopped @()
 }
 
 # Part 6 - Stop SMUpdates.exe if Running
@@ -124,7 +142,7 @@ if ($startStep -le 6) {
     Write-Host "[Part 6/12] Checking and stopping SMUpdates.exe if running..." -ForegroundColor Green
     Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
 
-    Update-FlagFile -step 7
+    Update-FlagFile -step 7 -serviceState @{} -processesStopped @("SMUpdates")
 }
 
 # Part 7 - Check and Manage Smart Office Live Sales Service
@@ -143,7 +161,8 @@ if ($startStep -le 7) {
         }
     }
 
-    Update-FlagFile -step 8
+    $serviceState = @{ $ServiceName = $initialServiceState }
+    Update-FlagFile -step 8 -serviceState $serviceState -processesStopped @("SMUpdates")
 }
 
 # Part 8 - Check and Manage PDTWiFi Processes
@@ -158,7 +177,7 @@ if ($startStep -le 8) {
         }
     }
 
-    Update-FlagFile -step 9
+    Update-FlagFile -step 9 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
 
 # Part 9 - Launch Setup Executable
@@ -172,7 +191,7 @@ if ($startStep -le 9) {
         Start-Process -FilePath $setupExe.FullName -Wait
     }
 
-    Update-FlagFile -step 10
+    Update-FlagFile -step 10 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
 
 # Part 10 - Wait for User Confirmation
@@ -192,30 +211,32 @@ if ($startStep -le 10) {
         }
     }
 
-    Update-FlagFile -step 11
+    Update-FlagFile -step 11 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
 
-# Part 11 - Set Permissions for StationMaster Folder
+# Part 11 - Set Permissions for StationMaster Folder and Revert Changes
 # -----
 if ($startStep -le 11) {
-    Write-Host "[Part 11/12] Setting permissions for StationMaster folder..." -ForegroundColor Green
+    Write-Host "[Part 11/12] Setting permissions
+
+ for StationMaster folder..." -ForegroundColor Green
     Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 
-    Update-FlagFile -step 12
-}
+    # Revert Services and Processes to Original State
+    Write-Host "[Revert] Reverting services and processes to original state..." -ForegroundColor Yellow
+    $flagData = Read-FlagFile
+    $initialServiceState = $flagData.ServiceState
+    $PDTWiFiProcesses = $flagData.ProcessesStopped
 
-# Final part to revert services and processes
-if ($startStep -le 12) {
-    Write-Host "[Part 12/12] Reverting services and processes to original state..." -ForegroundColor Green
     # Revert srvSOLiveSales service
-    if ($initialServiceState -eq 'Running') {
-        Set-Service -Name $ServiceName -StartupType Automatic
-        Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
-    } elseif
-
- ($initialServiceState -eq 'Stopped') {
-        Set-Service -Name $ServiceName -StartupType Manual
+    if ($initialServiceState.ContainsKey($ServiceName)) {
+        if ($initialServiceState[$ServiceName] -eq 'Running') {
+            Set-Service -Name $ServiceName -StartupType Automatic
+            Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        } elseif ($initialServiceState[$ServiceName] -eq 'Stopped') {
+            Set-Service -Name $ServiceName -StartupType Manual
+        }
     }
 
     # Revert PDTWiFi processes
@@ -227,8 +248,10 @@ if ($startStep -le 12) {
     }
 
     Write-Host "All tasks completed successfully." -ForegroundColor Green
-    Remove-Item -Path $flagFilePath -Force  # Remove the flag file upon successful completion
-    Delete-ScheduledTask  # Remove the scheduled task
+
+    # Remove the flag file and delete the scheduled task upon successful completion
+    Remove-Item -Path $flagFilePath -Force
+    Delete-ScheduledTask
 }
 
 # Calculate and display script execution time
