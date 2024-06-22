@@ -3,9 +3,10 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.77" -ForegroundColor Green
-# - start of part 11 - siletnly kill pdtwifi etc
+Write-Host "Version 1.78" -ForegroundColor Green
+# - firebird permissions at end
 
+Write-Host "---" -ForegroundColor Green
 # Initialize script start time
 $startTime = Get-Date
 
@@ -21,7 +22,7 @@ if (Test-Path $flagFilePath) {
 
 # Part 1 - Check for Admin Rights
 # -----
-Write-Host "[Part 1/12] Checking for admin rights..." -ForegroundColor Green
+Write-Host "[Part 1/13] Checking for admin rights..." -ForegroundColor Green
 function Test-Admin {
     $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -36,7 +37,7 @@ if (-not (Test-Admin)) {
 # Part 2 - Check for Running Smart Office Processes
 # -----
 if ($startStep -le 2) {
-    Write-Host "[Part 2/12] Checking for running Smart Office processes..." -ForegroundColor Green
+    Write-Host "[Part 2/13] Checking for running Smart Office processes..." -ForegroundColor Green
     $processesToCheck = @("Sm32Main", "Sm32")
     foreach ($process in $processesToCheck) {
         if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
@@ -50,7 +51,7 @@ if ($startStep -le 2) {
 # Part 3 - Create Directory if it Doesn't Exist
 # -----
 if ($startStep -le 3) {
-    Write-Host "[Part 3/12] Ensuring working directory exists..." -ForegroundColor Green
+    Write-Host "[Part 3/13] Ensuring working directory exists..." -ForegroundColor Green
     $workingDir = "C:\winsm"
     if (-not (Test-Path $workingDir)) {
         try {
@@ -64,7 +65,7 @@ if ($startStep -le 3) {
 
 # Part 4 - Download and Run SO_UC.exe Hidden if Necessary
 # -----
-Write-Host "[Part 4/12] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
+Write-Host "[Part 4/13] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
 
 # Display message about firewall
 Write-Host "[WARNING] Please ensure SO_UC.exe is allowed through the firewall." -ForegroundColor Cyan
@@ -96,7 +97,7 @@ try {
 # Part 5 - Check for Firebird Installation
 # -----
 if ($startStep -le 5) {
-    Write-Host "[Part 5/12] Checking for Firebird installation..." -ForegroundColor Green
+    Write-Host "[Part 5/13] Checking for Firebird installation..." -ForegroundColor Green
     $firebirdDir = "C:\Program Files (x86)\Firebird"
     $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
     if (-not (Test-Path $firebirdDir)) {
@@ -112,7 +113,7 @@ if ($startStep -le 5) {
 # Part 6 - Stop SMUpdates.exe if Running
 # -----
 if ($startStep -le 6) {
-    Write-Host "[Part 6/12] Checking and stopping SMUpdates.exe if running..." -ForegroundColor Green
+    Write-Host "[Part 6/13] Checking and stopping SMUpdates.exe if running..." -ForegroundColor Green
     try {
         Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
     } catch {
@@ -124,7 +125,7 @@ if ($startStep -le 6) {
 # Part 7 - Check and Manage Smart Office Live Sales Service
 # -----
 if ($startStep -le 7) {
-    Write-Host "[Part 7/12] Checking and managing Smart Office Live Sales service..." -ForegroundColor Green
+    Write-Host "[Part 7/13] Checking and managing Smart Office Live Sales service..." -ForegroundColor Green
     $ServiceName = "srvSOLiveSales"
     $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 
@@ -142,7 +143,7 @@ if ($startStep -le 7) {
 # Part 8 - Check and Manage PDTWiFi Processes
 # -----
 if ($startStep -le 8) {
-    Write-Host "[Part 8/12] Checking and managing PDTWiFi processes..." -ForegroundColor Green
+    Write-Host "[Part 8/13] Checking and managing PDTWiFi processes..." -ForegroundColor Green
     $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
     foreach ($process in $PDTWiFiProcesses) {
         try {
@@ -160,7 +161,7 @@ if ($startStep -le 8) {
 # Part 9 - Launch Setup Executable
 # -----
 if ($startStep -le 9) {
-    Write-Host "[Part 9/12] Launching Smart Office setup executable..." -ForegroundColor Green
+    Write-Host "[Part 9/13] Launching Smart Office setup executable..." -ForegroundColor Green
     $setupDir = "$workingDir\SmartOffice_Installer"
     $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
@@ -172,7 +173,7 @@ if ($startStep -le 9) {
 # Part 10 - Wait for User Confirmation
 # -----
 if ($startStep -le 10) {
-    Write-Host "[Part 10/12] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
+    Write-Host "[Part 10/13] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
     Read-Host
 
     # Check for Running Smart Office Processes Again
@@ -194,16 +195,26 @@ foreach ($process in $processesToKill) {
     Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host "[Part 11/12] Setting permissions for StationMaster folder..." -ForegroundColor Green
+Write-Host "[Part 11/13] Setting permissions for StationMaster folder..." -ForegroundColor Green
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
     Write-Host "Error setting permissions for StationMaster folder: $_" -ForegroundColor Red
 }
 
-# Part 12 - Clean Up and Finish
+# Part 12 - Set Permissions for Firebird Folder
 # -----
-Write-Host "[Part 12/12] Cleaning up and finishing script..." -ForegroundColor Green
+Write-Host "[Part 12/13] Setting permissions for Firebird folder..." -ForegroundColor Green
+try {
+    & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+} catch {
+    Write-Host "Error setting permissions for Firebird folder: $_" -ForegroundColor Red
+}
+
+
+# Part 13 - Clean Up and Finish
+# -----
+Write-Host "[Part 13/13] Cleaning up and finishing script..." -ForegroundColor Green
 
 # Delete the flag file
 Remove-Item -Path $flagFilePath -Force -ErrorAction SilentlyContinue
