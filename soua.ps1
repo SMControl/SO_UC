@@ -21,24 +21,6 @@ if (-not (Test-Path $winsmDir -PathType Container)) {
     }
 }
 
-# Define the flag file path
-$flagFilePath = "$winsmDir\SOUA_Flag.txt"
-
-# Check if flag file exists to determine starting point
-if (Test-Path $flagFilePath -PathType Leaf) {
-    $startStep = 10
-    Write-Host "Resuming from previous position..." -ForegroundColor Yellow
-} else {
-    $startStep = 0
-    # Create flag file silently
-    try {
-        New-Item -Path $flagFilePath -ItemType File -ErrorAction Stop | Out-Null
-    } catch {
-        # Handle flag file creation error silently
-        exit
-    }
-}
-
 
 # Part 1 - Check for Admin Rights
 # -----
