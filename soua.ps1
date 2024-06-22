@@ -3,69 +3,25 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.92" -ForegroundColor Green
-# - fixing upgrade statistics
+Write-Host "Version 1.81" -ForegroundColor Green
+# - Added message for resuming from previous position if flag file exists
 
+Write-Host "---" -ForegroundColor Green
 # Initialize script start time
 $startTime = Get-Date
 
-# Initialize log directory
-$logDir = "C:\winsm\SmartOffice_Installer\Update_Assistant_Logs_and_Records"
-if (-not (Test-Path $logDir -PathType Container)) {
+# Ensure the directory exists for the flag file
+$winsmDir = "C:\winsm"
+if (-not (Test-Path $winsmDir -PathType Container)) {
     try {
-        New-Item -Path $logDir -ItemType Directory -ErrorAction Stop | Out-Null
+        New-Item -Path $winsmDir -ItemType Directory -ErrorAction Stop | Out-Null
     } catch {
-        Write-Host "Error creating log directory: $_" -ForegroundColor Red
+        # Handle directory creation error silently
         exit
     }
 }
 
-# Display upgrade statistics
-$logFilePath = "C:\winsm\SmartOffice_Installer\Update_Assistant_Logs_and_Records\Upgrade_Log.txt"
-
-if (Test-Path $logFilePath) {
-    try {
-        $logEntries = Get-Content -Path $logFilePath
-        $totalUpgrades = $logEntries.Count
-
-        if ($totalUpgrades -gt 0) {
-            $durations = $logEntries | ForEach-Object {
-                if ($_ -match 'Duration: (\d+)m (\d+)s') {
-                    $minutes = [int]$matches[1]
-                    $seconds = [int]$matches[2]
-                    $minutes * 60 + $seconds
-                }
-            }
-
-            if ($durations) {
-                $shortest = $durations | Measure-Object -Minimum | Select-Object -ExpandProperty Minimum
-                $longest = $durations | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
-                $average = [math]::Round(($durations | Measure-Object -Average).Average)
-                $mean = [math]::Round(($durations | Measure-Object -Median).Median)
-
-                Write-Host "Upgrade Statistics:" -ForegroundColor Green
-                Write-Host "-------------------" -ForegroundColor Green
-                Write-Host "Total Number of Upgrades Performed: $totalUpgrades"
-                Write-Host "Shortest Upgrade: $(int)$(($shortest - $shortest % 60) / 60)m $(($shortest % 60))s"
-                Write-Host "Longest Upgrade: $(int)$(($longest - $longest % 60) / 60)m $(($longest % 60))s"
-                Write-Host "Average Upgrade: $(int)$(($average - $average % 60) / 60)m $(($average % 60))s"
-                Write-Host "Mean Upgrade: $(int)$(($mean - $mean % 60) / 60)m $(($mean % 60))s"
-                Write-Host "-------------------" -ForegroundColor Green
-                Write-Host " "
-            } else {
-                Write-Host "No valid upgrade durations found in the log file." -ForegroundColor Yellow
-            }
-        } else {
-            Write-Host "No upgrade entries found in the log file." -ForegroundColor Yellow
-        }
-    } catch {
-        Write-Host "Error reading upgrade log file: $_" -ForegroundColor Red
-    }
-} else {
-    Write-Host "Upgrade log file not found: $logFilePath" -ForegroundColor Red
-}
 # Define the flag file path
-$winsmDir = "C:\winsm"
 $flagFilePath = "$winsmDir\SOUA_Flag.txt"
 
 # Check if flag file exists to determine starting point
@@ -82,6 +38,7 @@ if (Test-Path $flagFilePath -PathType Leaf) {
         exit
     }
 }
+
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -210,29 +167,11 @@ if ($startStep -le 8) {
 # -----
 if ($startStep -le 9) {
     Write-Host "[Part 9/13] Launching Smart Office setup executable..." -ForegroundColor Green
-    $setupDir = "C:\SmartOffice_Installer"
-
-    # Check if the setup directory exists
-    if (-not (Test-Path $setupDir -PathType Container)) {
-        Write-Host "Error: Setup directory '$setupDir' not found. Exiting." -ForegroundColor Red
-        exit
-    }
-
-    # Get the latest setup executable
+    $setupDir = "$workingDir\SmartOffice_Installer"
     $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
-    # Check if a setup executable was found
-    if (-not $setupExe) {
-        Write-Host "Error: No setup executable (Setup*.exe) found in '$setupDir'. Exiting." -ForegroundColor Red
-        exit
-    }
-
-    # Launch the setup executable
-    try {
+    if ($setupExe) {
         Start-Process -FilePath $setupExe.FullName -Wait
-    } catch {
-        Write-Host "Error starting setup executable: $_" -ForegroundColor Red
-        exit
     }
 }
 
@@ -282,19 +221,12 @@ try {
 # -----
 Write-Host "[Part 13/13] Cleaning up and finishing script..." -ForegroundColor Green
 
-# Log timestamp, duration, and setup file used
-$logEntry = "Timestamp: $(Get-Date)"
-$logEntry += "`nDuration: $($totalMinutes)m $($totalSeconds)s"
-$logEntry += "`nSetup File: $($setupExe.Name)"
-Add-Content -Path $logFilePath -Value $logEntry
-
 # Delete the flag file
 Remove-Item -Path $flagFilePath -Force -ErrorAction SilentlyContinue
 
-Write-Host " "
 
-# Change directory back to C:\winsm
-Set-Location -Path "C:\winsm"
+
+Write-Host " "
 
 # Calculate and display script execution time
 $endTime = Get-Date
