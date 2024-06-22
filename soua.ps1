@@ -3,10 +3,9 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.106" -ForegroundColor Green
-# - Removed flag file handling and resume capability
-# - Set working directory to "C:\winsm"
-# - Enhanced Part 9 to ensure setup executable is found and executed properly
+Write-Host "Version 1.107" -ForegroundColor Green
+# - Fixed setup directory path issue
+# - Removed flag file handling
 
 Write-Host "---" -ForegroundColor Green
 
@@ -143,7 +142,7 @@ foreach ($process in $PDTWiFiProcesses) {
 # -----
 Write-Host "[Part 9/13] Launching Smart Office setup executable..." -ForegroundColor Green
 
-# Verify setup directory
+# Setup directory
 $setupDir = "$workingDir\SmartOffice_Installer"
 if (-not (Test-Path $setupDir -PathType Container)) {
     Write-Host "Error: Setup directory '$setupDir' does not exist." -ForegroundColor Red
@@ -184,9 +183,7 @@ foreach ($process in $processesToCheck) {
 # Part 11 - Set Permissions for StationMaster Folder
 # -----
 
-# Silently kill processes PDTWiFi and SM
-
-Updates if running
+# Silently kill processes PDTWiFi and SMUpdates if running
 $processesToKill = @("PDTWiFi", "PDTWiFi64", "SMUpdates")
 foreach ($process in $processesToKill) {
     Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
@@ -216,7 +213,9 @@ Write-Host " "
 
 # Calculate and display script execution time
 $endTime = Get-Date
-$executionTime = $endTime - $startTime
+$executionTime
+
+ = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
 Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
