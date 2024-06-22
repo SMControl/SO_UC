@@ -3,9 +3,9 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.49
-# - Added scheduled task creation to resume script execution after restart.
-# - Implemented flag file to track service and process changes for reverting in Part 11.
+# Version 1.50
+# - Modified scheduled task principal to run with highest privileges as current user context.
+# - Start SO_UC.exe minimized.
 
 # Initialize script start time
 $startTime = Get-Date
@@ -48,7 +48,7 @@ function Read-FlagFile {
 function Create-ScheduledTask {
     $action = New-ScheduledTaskAction -Execute $taskAction -Argument $taskArguments -WorkingDirectory $env:SystemRoot\System32
     $trigger = New-ScheduledTaskTrigger -AtStartup
-    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
     Register-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -TaskName $taskName -Description "Resume Smart Office installation script at startup" -Force
 }
 
@@ -109,19 +109,22 @@ if ($startStep -le 3) {
     Update-FlagFile -step 4 -serviceState @{} -processesStopped @()
 }
 
-# Part 4 - Download and Run SO_UC.exe
-# -----
-if ($startStep -le 4) {
-    Write-Host "[Part 4/12] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
-    $SO_UC_Path = "$workingDir\SO_UC.exe"
-    $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
-    if (-not (Test-Path $SO_UC_Path)) {
-        Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
-    }
-    Start-Process -FilePath $SO_UC_Path -Wait
 
-    Update-FlagFile -step 5 -serviceState @{} -processesStopped @()
+# Part 4 - Download and Run SO_UC.exe Minimized if Necessary
+# -----
+Write-Host "[Part 4/12] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
+$SO_UC_Path = "$workingDir\SO_UC.exe"
+$SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
+if (-not (Test-Path $SO_UC_Path)) {
+    Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
 }
+
+# Start SO_UC.exe minimized
+$processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
+$processStartInfo.FileName = $SO_UC_Path
+$processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
+
+Start-Process -FilePath $processStartInfo.FileName -Wait -WindowStyle $processStartInfo.WindowStyle
 
 # Part 5 - Check for Firebird Installation
 # -----
@@ -217,46 +220,4 @@ if ($startStep -le 10) {
 # Part 11 - Set Permissions for StationMaster Folder and Revert Changes
 # -----
 if ($startStep -le 11) {
-    Write-Host "[Part 11/12] Setting permissions
-
- for StationMaster folder..." -ForegroundColor Green
-    Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
-    & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
-
-    # Revert Services and Processes to Original State
-    Write-Host "[Revert] Reverting services and processes to original state..." -ForegroundColor Yellow
-    $flagData = Read-FlagFile
-    $initialServiceState = $flagData.ServiceState
-    $PDTWiFiProcesses = $flagData.ProcessesStopped
-
-    # Revert srvSOLiveSales service
-    if ($initialServiceState.ContainsKey($ServiceName)) {
-        if ($initialServiceState[$ServiceName] -eq 'Running') {
-            Set-Service -Name $ServiceName -StartupType Automatic
-            Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
-        } elseif ($initialServiceState[$ServiceName] -eq 'Stopped') {
-            Set-Service -Name $ServiceName -StartupType Manual
-        }
-    }
-
-    # Revert PDTWiFi processes
-    foreach ($process in $PDTWiFiProcesses) {
-        $p = Get-Process -Name $process -ErrorAction SilentlyContinue
-        if (!$p) {
-            Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process.exe"
-        }
-    }
-
-    Write-Host "All tasks completed successfully." -ForegroundColor Green
-
-    # Remove the flag file and delete the scheduled task upon successful completion
-    Remove-Item -Path $flagFilePath -Force
-    Delete-ScheduledTask
-}
-
-# Calculate and display script execution time
-$endTime = Get-Date
-$executionTime = $endTime - $startTime
-$totalMinutes = [math]::Floor($executionTime.TotalMinutes)
-$totalSeconds = $executionTime.Seconds
-Write-Host "Script completed in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
+    Write-Host "[Part 
