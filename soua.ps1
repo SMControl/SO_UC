@@ -3,8 +3,8 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.81" -ForegroundColor Green
-# - Added message for resuming from previous position if flag file exists
+Write-Host "Version 1.82" -ForegroundColor Green
+# - Suppressed output messages for lower parts when resuming from previous position
 
 Write-Host "---" -ForegroundColor Green
 # Initialize script start time
@@ -39,24 +39,25 @@ if (Test-Path $flagFilePath -PathType Leaf) {
     }
 }
 
-
 # Part 1 - Check for Admin Rights
 # -----
-Write-Host "[Part 1/13] Checking for admin rights..." -ForegroundColor Green
-function Test-Admin {
-    $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-    return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
+if ($startStep <= 1) {
+    Write-Host "[Part 1/13] Checking for admin rights..." -ForegroundColor Green
+    function Test-Admin {
+        $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+        return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    }
 
-if (-not (Test-Admin)) {
-    Write-Host "Error: Administrator rights required to run this script. Exiting." -ForegroundColor Red
-    pause
-    exit
+    if (-not (Test-Admin)) {
+        Write-Host "Error: Administrator rights required to run this script. Exiting." -ForegroundColor Red
+        pause
+        exit
+    }
 }
 
 # Part 2 - Check for Running Smart Office Processes
 # -----
-if ($startStep -le 2) {
+if ($startStep <= 2) {
     Write-Host "[Part 2/13] Checking for running Smart Office processes..." -ForegroundColor Green
     $processesToCheck = @("Sm32Main", "Sm32")
     foreach ($process in $processesToCheck) {
@@ -70,38 +71,40 @@ if ($startStep -le 2) {
 
 # Part 4 - Download and Run SO_UC.exe Hidden if Necessary
 # -----
-Write-Host "[Part 4/13] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
+if ($startStep <= 4) {
+    Write-Host "[Part 4/13] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
 
-# Display message about firewall
-Write-Host "[WARNING] Please ensure SO_UC.exe is allowed through the firewall." -ForegroundColor Cyan
-Write-Host "[WARNING] It's responsible for retrieving the latest Smart Office Setup." -ForegroundColor Cyan
+    # Display message about firewall
+    Write-Host "[WARNING] Please ensure SO_UC.exe is allowed through the firewall." -ForegroundColor Cyan
+    Write-Host "[WARNING] It's responsible for retrieving the latest Smart Office Setup." -ForegroundColor Cyan
 
-$SO_UC_Path = "$workingDir\SO_UC.exe"
-$SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
-if (-not (Test-Path $SO_UC_Path)) {
+    $SO_UC_Path = "$workingDir\SO_UC.exe"
+    $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
+    if (-not (Test-Path $SO_UC_Path)) {
+        try {
+            Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
+        } catch {
+            Write-Host "Error downloading SO_UC.exe: $_" -ForegroundColor Red
+            exit
+        }
+    }
+
+    # Start SO_UC.exe hidden
+    $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $processStartInfo.FileName = $SO_UC_Path
+    $processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+
     try {
-        Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
+        Start-Process -FilePath $processStartInfo.FileName -Wait -WindowStyle $processStartInfo.WindowStyle
     } catch {
-        Write-Host "Error downloading SO_UC.exe: $_" -ForegroundColor Red
+        Write-Host "Error starting SO_UC.exe: $_" -ForegroundColor Red
         exit
     }
 }
 
-# Start SO_UC.exe hidden
-$processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
-$processStartInfo.FileName = $SO_UC_Path
-$processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-try {
-    Start-Process -FilePath $processStartInfo.FileName -Wait -WindowStyle $processStartInfo.WindowStyle
-} catch {
-    Write-Host "Error starting SO_UC.exe: $_" -ForegroundColor Red
-    exit
-}
-
 # Part 5 - Check for Firebird Installation
 # -----
-if ($startStep -le 5) {
+if ($startStep <= 5) {
     Write-Host "[Part 5/13] Checking for Firebird installation..." -ForegroundColor Green
     $firebirdDir = "C:\Program Files (x86)\Firebird"
     $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
@@ -117,7 +120,7 @@ if ($startStep -le 5) {
 
 # Part 6 - Stop SMUpdates.exe if Running
 # -----
-if ($startStep -le 6) {
+if ($startStep <= 6) {
     Write-Host "[Part 6/13] Checking and stopping SMUpdates.exe if running..." -ForegroundColor Green
     try {
         Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
@@ -129,7 +132,7 @@ if ($startStep -le 6) {
 
 # Part 7 - Check and Manage Smart Office Live Sales Service
 # -----
-if ($startStep -le 7) {
+if ($startStep <= 7) {
     Write-Host "[Part 7/13] Checking and managing Smart Office Live Sales service..." -ForegroundColor Green
     $ServiceName = "srvSOLiveSales"
     $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
@@ -147,7 +150,7 @@ if ($startStep -le 7) {
 
 # Part 8 - Check and Manage PDTWiFi Processes
 # -----
-if ($startStep -le 8) {
+if ($startStep <= 8) {
     Write-Host "[Part 8/13] Checking and managing PDTWiFi processes..." -ForegroundColor Green
     $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
     foreach ($process in $PDTWiFiProcesses) {
@@ -165,7 +168,7 @@ if ($startStep -le 8) {
 
 # Part 9 - Launch Setup Executable
 # -----
-if ($startStep -le 9) {
+if ($startStep <= 9) {
     Write-Host "[Part 9/13] Launching Smart Office setup executable..." -ForegroundColor Green
     $setupDir = "$workingDir\SmartOffice_Installer"
     $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -178,7 +181,7 @@ if ($startStep -le 9) {
 # Part 10 - Wait for User Confirmation
 # -----
 Write-Host "[Part 10/13] Post Installation" -ForegroundColor Green
-if ($startStep -le 10) {
+if ($startStep <= 10) {
     Write-Host "[Part 10/13] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
     Read-Host
 
@@ -217,14 +220,14 @@ try {
     Write-Host "Error setting permissions for Firebird folder: $_" -ForegroundColor Red
 }
 
-# Part 13 - Clean Up and Finish
+# Part
+
+ 13 - Clean Up and Finish
 # -----
 Write-Host "[Part 13/13] Cleaning up and finishing script..." -ForegroundColor Green
 
 # Delete the flag file
 Remove-Item -Path $flagFilePath -Force -ErrorAction SilentlyContinue
-
-
 
 Write-Host " "
 
