@@ -1,6 +1,4 @@
 Write-Host "SOUA.ps1 - Version 1.108" -ForegroundColor Green
-# --- Recent Changes
-# - Tidy up some small bits
 
 # Initialize script start time
 $startTime = Get-Date
@@ -20,7 +18,7 @@ Set-Location -Path $workingDir
 
 # Part 1 - Check for Admin Rights
 # -----
-Write-Host "[Part 1/13] Checking for admin rights..." -ForegroundColor Green
+Write-Host "[Part 1] Checking for admin rights..." -ForegroundColor Green
 function Test-Admin {
     $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -34,7 +32,7 @@ if (-not (Test-Admin)) {
 
 # Part 2 - Check for Running Smart Office Processes
 # -----
-Write-Host "[Part 2/13] Checking for running Smart Office processes..." -ForegroundColor Green
+Write-Host "[Part 2] Checking for running Smart Office processes..." -ForegroundColor Green
 $processesToCheck = @("Sm32Main", "Sm32")
 foreach ($process in $processesToCheck) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
@@ -44,11 +42,9 @@ foreach ($process in $processesToCheck) {
     }
 }
 
-# Part 4 - Download and Run SO_UC.exe Hidden if Necessary
+# Part 3 - Download SO_UC.exe if Necessary
 # -----
-Write-Host "[Part 4/13] Downloading latest Smart Office Setup if necessary. Please Wait..." -ForegroundColor Green
-Write-Host "[WARNING] Please ensure SO_UC.exe is allowed through the firewall, to download latest Smart Office Installer." -ForegroundColor Orange
-
+Write-Host "[Part 3] Downloading SO_UC.exe if necessary..." -ForegroundColor Green
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
@@ -60,21 +56,9 @@ if (-not (Test-Path $SO_UC_Path)) {
     }
 }
 
-# Start SO_UC.exe hidden
-$processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
-$processStartInfo.FileName = $SO_UC_Path
-$processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-try {
-    Start-Process -FilePath $processStartInfo.FileName -Wait -WindowStyle $processStartInfo.WindowStyle
-} catch {
-    Write-Host "Error starting SO_UC.exe: $_" -ForegroundColor Red
-    exit
-}
-
-# Part 5 - Check for Firebird Installation
+# Part 4 - Check for Firebird Installation
 # -----
-Write-Host "[Part 5/13] Checking for Firebird installation..." -ForegroundColor Green
+Write-Host "[Part 4] Checking for Firebird installation..." -ForegroundColor Green
 $firebirdDir = "C:\Program Files (x86)\Firebird"
 $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
 if (-not (Test-Path $firebirdDir)) {
@@ -86,9 +70,9 @@ if (-not (Test-Path $firebirdDir)) {
     }
 }
 
-# Part 6 - Stop SMUpdates.exe if Running
+# Part 5 - Stop SMUpdates if Running
 # -----
-Write-Host "[Part 6/13] Checking and stopping SMUpdates.exe if running..." -ForegroundColor Green
+Write-Host "[Part 5] Stopping SMUpdates if running..." -ForegroundColor Green
 try {
     Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
 } catch {
@@ -96,13 +80,15 @@ try {
     exit
 }
 
-# Part 7 - Check and Manage Smart Office Live Sales Service
+# Part 6 - Manage Smart Office Live Sales Service
 # -----
-Write-Host "[Part 7/13] Checking and managing Smart Office Live Sales service..." -ForegroundColor Green
+Write-Host "[Part 6] Managing Smart Office Live Sales service..." -ForegroundColor Green
 $ServiceName = "srvSOLiveSales"
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+$wasRunning = $false
 
 if ($service -and $service.Status -eq 'Running') {
+    $wasRunning = $true
     try {
         Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
         Set-Service -Name $ServiceName -StartupType Disabled
@@ -112,34 +98,29 @@ if ($service -and $service.Status -eq 'Running') {
     }
 }
 
-# Part 8 - Check and Manage PDTWiFi Processes
+# Part 7 - Manage PDTWiFi Processes
 # -----
-Write-Host "[Part 8/13] Checking and managing PDTWiFi processes..." -ForegroundColor Green
+Write-Host "[Part 7] Managing PDTWiFi processes..." -ForegroundColor Green
 $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
+$PDTWiFiStates = @{}
+
 foreach ($process in $PDTWiFiProcesses) {
-    try {
-        $p = Get-Process -Name $process -ErrorAction SilentlyContinue
-        if ($p) {
-            Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
-        }
-    } catch {
-        Write-Host "Error managing process '$process': $_" -ForegroundColor Red
-        exit
+    $p = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if ($p) {
+        $PDTWiFiStates[$process] = $p.Status
+        Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
     }
 }
 
-# Part 9 - Launch Setup Executable
+# Part 8 - Launch Setup Executable
 # -----
-Write-Host "[Part 9/13] Launching Smart Office setup executable..." -ForegroundColor Green
-
-# Setup directory
+Write-Host "[Part 8] Launching Smart Office setup executable..." -ForegroundColor Green
 $setupDir = "$workingDir\SmartOffice_Installer"
 if (-not (Test-Path $setupDir -PathType Container)) {
     Write-Host "Error: Setup directory '$setupDir' does not exist." -ForegroundColor Red
     exit
 }
 
-# Find the setup executable
 $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if ($setupExe) {
     Write-Host "Found setup executable: $($setupExe.FullName)" -ForegroundColor Green
@@ -154,10 +135,9 @@ if ($setupExe) {
     exit
 }
 
-# Part 10 - Wait for User Confirmation
+# Part 9 - Wait for User Confirmation
 # -----
-Write-Host "[Part 10/13] Post Installation" -ForegroundColor Green
-Write-Host "[Part 10/13] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
+Write-Host "[Part 9] When Upgrade is FULLY complete, Press Enter...." -ForegroundColor Yellow
 Read-Host
 
 # Check for Running Smart Office Processes Again
@@ -175,27 +155,55 @@ foreach ($process in $processesToKill) {
     Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
 }
 
-# Part 11 - Set Permissions for StationMaster Folder
+# Part 10 - Set Permissions for StationMaster Folder
 # -----
-Write-Host "[Part 11/13] Checking Stationmaster folder..." -ForegroundColor Green
+Write-Host "[Part 10] Setting permissions for StationMaster folder..." -ForegroundColor Green
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
     Write-Host "Error setting permissions for StationMaster folder: $_" -ForegroundColor Red
 }
 
-# Part 12 - Set Permissions for Firebird Folder
+# Part 11 - Set Permissions for Firebird Folder
 # -----
-Write-Host "[Part 12/13] Checking Firebird folder..." -ForegroundColor Green
+Write-Host "[Part 11] Setting permissions for Firebird folder..." -ForegroundColor Green
 try {
     & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
     Write-Host "Error setting permissions for Firebird folder: $_" -ForegroundColor Red
 }
 
-# Part 13 - Clean Up and Finish
+# Part 12 - Revert Smart Office Live Sales Service
 # -----
-Write-Host "[Part 13/13] Cleaning up and finishing script..." -ForegroundColor Green
+Write-Host "[Part 12] Reverting Smart Office Live Sales service..." -ForegroundColor Green
+if ($wasRunning) {
+    try {
+        Set-Service -Name $ServiceName -StartupType Automatic
+        Start-Service -Name $ServiceName
+    } catch {
+        Write-Host "Error reverting service '$ServiceName' to its previous state: $_" -ForegroundColor Red
+    }
+}
+
+# Part 13 - Revert PDTWiFi Processes
+# -----
+Write-Host "[Part 13] Reverting PDTWiFi processes..." -ForegroundColor Green
+foreach ($process in $PDTWiFiProcesses) {
+    if ($PDTWiFiStates.ContainsKey($process)) {
+        $status = $PDTWiFiStates[$process]
+        if ($status -eq 'Running') {
+            try {
+                Start-Process -FilePath "C:\Path\to\$process.exe" -ErrorAction SilentlyContinue
+            } catch {
+                Write-Host "Error starting $process $_" -ForegroundColor Red
+            }
+        }
+    }
+}
+
+# Part 14 - Clean Up and Finish
+# -----
+Write-Host "[Part 14] Cleaning up and finishing script..." -ForegroundColor Green
 
 # Calculate and display script execution time
 $endTime = Get-Date
