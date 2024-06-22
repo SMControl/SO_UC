@@ -3,12 +3,14 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.102" -ForegroundColor Green
+Write-Host "Version 1.103" -ForegroundColor Green
 # - removed flag file handling and resume capability
-
-
+# - set initial working directory to C:\winsm
 
 Write-Host "---" -ForegroundColor Green
+
+# Set initial working directory to C:\winsm
+Set-Location -Path "C:\winsm"
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -44,7 +46,7 @@ Write-Host "[Part 4/13] Downloading latest Smart Office Setup if necessary..." -
 Write-Host "[WARNING] Please ensure SO_UC.exe is allowed through the firewall." -ForegroundColor Cyan
 Write-Host "[WARNING] It's responsible for retrieving the latest Smart Office Setup." -ForegroundColor Cyan
 
-$SO_UC_Path = "$workingDir\SO_UC.exe"
+$SO_UC_Path = "$PWD\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
     try {
