@@ -3,11 +3,12 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.57
+# Version 1.58
 # - Removed scheduled task creation and deletion.
 # - Added logic to resume from flag file at step 10 if exists.
 # - Always ensure deletion of the flag file at the end.
 # - Added red-colored error messages for better visibility.
+# - removed ascii art
 
 # Initialize script start time
 $startTime = Get-Date
