@@ -3,9 +3,10 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.60
+# Version 1.61
 # - Added red-colored error messages for better visibility.
 # - Updated flagfile line in part 9
+# - cleaned up end messages
 
 # Initialize script start time
 $startTime = Get-Date
@@ -260,11 +261,11 @@ try {
     Write-Host "Error deleting flag file: $_" -ForegroundColor Red
 }
 
-Write-Host "Smart Office installation script completed successfully!" -ForegroundColor Green
+Write-Host " "
 
 # Calculate and display script execution time
 $endTime = Get-Date
 $executionTime = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
-Write-Host "Script completed in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
+Write-Host "Script completed succesfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
