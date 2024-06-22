@@ -3,16 +3,19 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.61
-# - Added red-colored error messages for better visibility.
-# - Updated flagfile line in part 9
-# - cleaned up end messages
+# Version 1.63
+# - Removed resume installer scheduled task but kept the flag file.
+# - Implemented logic to resume script from step 10 if flag file exists.
+# - All error messages or problem messages are in red.
 
 # Initialize script start time
 $startTime = Get-Date
 
 # Define the flag file path
 $flagFilePath = "C:\winsm\SOUA_Flag.txt"
+$taskName = "SmartOfficeInstallerResume"
+$taskAction = "PowerShell.exe"
+$taskArguments = "-ExecutionPolicy Bypass -Command `"irm https://raw.githubusercontent.com/SMControl/SO_UC/main/soua.ps1 | iex`""
 
 # Function to update flag file
 function Update-FlagFile {
@@ -42,13 +45,48 @@ function Read-FlagFile {
     }
 }
 
-# Check for flag file to determine starting point
-$flagData = Read-FlagFile
-$startStep = $flagData.Step
+# Function to delete the flag file
+function Delete-FlagFile {
+    if (Test-Path $flagFilePath) {
+        Remove-Item -Path $flagFilePath -Force
+    }
+}
 
-if ($startStep -eq 0) {
-    # Part 1 - Check for Admin Rights
-    # -----
+# Function to create the scheduled task
+function Create-ScheduledTask {
+    $action = New-ScheduledTaskAction -Execute $taskAction -Argument $taskArguments -WorkingDirectory "C:\winsm"
+    $trigger = New-ScheduledTaskTrigger -AtStartup
+    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
+    Register-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -TaskName $taskName -Description "Resume Smart Office installation script at startup" -Force
+}
+
+# Function to delete the scheduled task
+function Delete-ScheduledTask {
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+}
+
+# Create the scheduled task (only once at the start)
+if (!(Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue)) {
+    Create-ScheduledTask
+}
+
+# Determine the step to start from
+$flagData = Read-FlagFile
+
+if (Test-Path $flagFilePath) {
+    $startStep = $flagData.Step
+} else {
+    $startStep = 1
+}
+
+# Adjust to start from step 10 if flag file is present
+if ($startStep -le 10) {
+    $startStep = 10
+}
+
+# Part 1 - Check for Admin Rights
+# -----
+if ($startStep -le 1) {
     Write-Host "[Part 1/12] Checking for admin rights..." -ForegroundColor Green
     function Test-Admin {
         $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -56,7 +94,7 @@ if ($startStep -eq 0) {
     }
 
     if (-not (Test-Admin)) {
-        Write-Host "Error: Administrator rights required to run this script. Exiting." -ForegroundColor Red
+        Write-Host "[Error] This script requires administrator privileges. Please run as an administrator." -ForegroundColor Red
         pause
         exit
     }
@@ -71,7 +109,7 @@ if ($startStep -le 2) {
     $processesToCheck = @("Sm32Main", "Sm32")
     foreach ($process in $processesToCheck) {
         if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-            Write-Host "Error: Smart Office process '$process' is running. Close it and retry." -ForegroundColor Red
+            Write-Host "[Error] Smart Office is currently running. Please close it before running this script." -ForegroundColor Red
             pause
             exit
         }
@@ -86,12 +124,7 @@ if ($startStep -le 3) {
     Write-Host "[Part 3/12] Ensuring working directory exists..." -ForegroundColor Green
     $workingDir = "C:\winsm"
     if (-not (Test-Path $workingDir)) {
-        try {
-            New-Item -Path $workingDir -ItemType Directory | Out-Null
-        } catch {
-            Write-Host "Error creating directory '$workingDir': $_" -ForegroundColor Red
-            exit
-        }
+        New-Item -Path $workingDir -ItemType Directory | Out-Null
     }
 
     Update-FlagFile -step 4 -serviceState @{} -processesStopped @()
@@ -108,12 +141,7 @@ Write-Host "[WARNING] It's responsible for retrieving the latest Smart Office Se
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
-    try {
-        Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
-    } catch {
-        Write-Host "Error downloading SO_UC.exe: $_" -ForegroundColor Red
-        exit
-    }
+    Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
 }
 
 # Start SO_UC.exe hidden
@@ -121,12 +149,7 @@ $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
 $processStartInfo.FileName = $SO_UC_Path
 $processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
-try {
-    Start-Process -FilePath $processStartInfo.FileName -Wait -WindowStyle $processStartInfo.WindowStyle
-} catch {
-    Write-Host "Error starting SO_UC.exe: $_" -ForegroundColor Red
-    exit
-}
+Start-Process -FilePath $processStartInfo.FileName -Wait -WindowStyle $processStartInfo.WindowStyle
 
 # Part 5 - Check for Firebird Installation
 # -----
@@ -135,12 +158,7 @@ if ($startStep -le 5) {
     $firebirdDir = "C:\Program Files (x86)\Firebird"
     $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
     if (-not (Test-Path $firebirdDir)) {
-        try {
-            Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
-        } catch {
-            Write-Host "Error installing Firebird: $_" -ForegroundColor Red
-            exit
-        }
+        Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
     }
 
     Update-FlagFile -step 6 -serviceState @{} -processesStopped @()
@@ -150,12 +168,7 @@ if ($startStep -le 5) {
 # -----
 if ($startStep -le 6) {
     Write-Host "[Part 6/12] Checking and stopping SMUpdates.exe if running..." -ForegroundColor Green
-    try {
-        Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
-    } catch {
-        Write-Host "Error stopping SMUpdates.exe: $_" -ForegroundColor Red
-        exit
-    }
+    Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
 
     Update-FlagFile -step 7 -serviceState @{} -processesStopped @("SMUpdates")
 }
@@ -171,13 +184,8 @@ if ($startStep -le 7) {
     if ($service) {
         $initialServiceState = $service.Status
         if ($service.Status -eq 'Running') {
-            try {
-                Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-                Set-Service -Name $ServiceName -StartupType Disabled
-            } catch {
-                Write-Host "Error stopping service '$ServiceName': $_" -ForegroundColor Red
-                exit
-            }
+            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+            Set-Service -Name $ServiceName -StartupType Disabled
         }
     }
 
@@ -191,14 +199,9 @@ if ($startStep -le 8) {
     Write-Host "[Part 8/12] Checking and managing PDTWiFi processes..." -ForegroundColor Green
     $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
     foreach ($process in $PDTWiFiProcesses) {
-        try {
-            $p = Get-Process -Name $process -ErrorAction SilentlyContinue
-            if ($p) {
-                Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
-            }
-        } catch {
-            Write-Host "Error managing process '$process': $_" -ForegroundColor Red
-            exit
+        $p = Get-Process -Name $process -ErrorAction SilentlyContinue
+        if ($p) {
+            Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
         }
     }
 
@@ -219,7 +222,9 @@ if ($startStep -le 9) {
     Update-FlagFile -step 10 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
 
-# Part 10 - Wait for User Confirmation
+# Part 10 -
+
+ Wait for User Confirmation
 # -----
 if ($startStep -le 10) {
     Write-Host "[Part 10/12] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
@@ -242,30 +247,39 @@ if ($startStep -le 10) {
 # Part 11 - Set Permissions for StationMaster Folder
 # -----
 Write-Host "[Part 11/12] Setting permissions for StationMaster folder..." -ForegroundColor Green
-try {
-    & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
-} catch {
-    Write-Host "Error setting permissions for StationMaster folder: $_" -ForegroundColor Red
-}
+& icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 
-Update-FlagFile -step 12 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
-
-# Part 12 - Clean Up and Finish
+# Revert Services and Processes to Original State
 # -----
-Write-Host "[Part 12/12] Cleaning up and finishing script..." -ForegroundColor Green
-
-# Delete the flag file
-try {
-    Remove-Item -Path $flagFilePath -Force
-} catch {
-    Write-Host "Error deleting flag file: $_" -ForegroundColor Red
+Write-Host "[Revert] Reverting services and processes to original state..." -ForegroundColor Yellow
+# Revert srvSOLiveSales service
+if ($initialServiceState -eq 'Running') {
+    Set-Service -Name $ServiceName -StartupType Automatic
+    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+} elseif ($initialServiceState -eq 'Stopped') {
+    Set-Service -Name $ServiceName -StartupType Manual
 }
 
-Write-Host " "
+# Revert PDTWiFi processes
+foreach ($process in $PDTWiFiProcesses) {
+    $p = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if (!$p) {
+        Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process.exe"
+    }
+}
+
+# Write completion message
+Write-Host " "  # Blank line for separation
 
 # Calculate and display script execution time
 $endTime = Get-Date
 $executionTime = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
-Write-Host "Script completed succesfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
+Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
+
+# Delete the flag file
+Delete-FlagFile
+
+# Delete the scheduled task (not necessary anymore)
+Delete-ScheduledTask
