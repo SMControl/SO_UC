@@ -3,8 +3,9 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.82" -ForegroundColor Green
+Write-Host "Version 1.84" -ForegroundColor Green
 # - Suppressed output messages for lower parts when resuming from previous position
+# - Tidied up "Part X/Y" labels for consistency
 
 Write-Host "---" -ForegroundColor Green
 # Initialize script start time
@@ -42,7 +43,7 @@ if (Test-Path $flagFilePath -PathType Leaf) {
 # Part 1 - Check for Admin Rights
 # -----
 if ($startStep <= 1) {
-    Write-Host "[Part 1/13] Checking for admin rights..." -ForegroundColor Green
+    Write-Host "[Part 1/13] Checking for administrator rights..." -ForegroundColor Green
     function Test-Admin {
         $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
         return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -220,9 +221,9 @@ try {
     Write-Host "Error setting permissions for Firebird folder: $_" -ForegroundColor Red
 }
 
-# Part
+# Part 13
 
- 13 - Clean Up and Finish
+ - Clean Up and Finish
 # -----
 Write-Host "[Part 13/13] Cleaning up and finishing script..." -ForegroundColor Green
 
