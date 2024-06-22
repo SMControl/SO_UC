@@ -9,15 +9,6 @@
 # - Always ensure deletion of the flag file at the end.
 # - Added red-colored error messages for better visibility.
 
-# ASCII art "sm"
-Write-Host @"
-  ____ _____ _        _              _    
- / ___| ____| |      / \   ___ ___ | | __
-| |  _|  _| | |     / _ \ / __/ _ \| |/ /
-| |_| | |___| |___ / ___ \ (_| (_) |   < 
- \____|_____|_____/_/   \_\___\___/|_|\_\
-"@ -ForegroundColor Green
-
 # Initialize script start time
 $startTime = Get-Date
 
@@ -231,9 +222,9 @@ if ($startStep -le 9) {
         exit
     }
 
-    Update-FlagFile -
+    Update-FlagFile -step 10 -serviceState $service
 
-step 10 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
+State -processesStopped $PDTWiFiProcesses
 }
 
 # Part 10 - Wait for User Confirmation
