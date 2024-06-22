@@ -3,21 +3,29 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.78" -ForegroundColor Green
-# - firebird permissions at end
+Write-Host "Version 1.79" -ForegroundColor Green
+# - better define flagfile part
 
 Write-Host "---" -ForegroundColor Green
 # Initialize script start time
 $startTime = Get-Date
 
 # Define the flag file path
-$flagFilePath = "C:\winsm\SOUA_Flag.txt"
+$flagFilePath = "$winsmDir\SOUA_Flag.txt"
 
 # Check if flag file exists to determine starting point
-if (Test-Path $flagFilePath) {
+if (Test-Path $flagFilePath -PathType Leaf) {
     $startStep = 10
 } else {
     $startStep = 0
+    # Create flag file
+    try {
+        New-Item -Path $flagFilePath -ItemType File | Out-Null
+        Write-Host "Flag file created: $flagFilePath" -ForegroundColor Yellow
+    } catch {
+        Write-Host "Error creating flag file $flagFilePath: $_" -ForegroundColor Red
+        exit
+    }
 }
 
 # Part 1 - Check for Admin Rights
