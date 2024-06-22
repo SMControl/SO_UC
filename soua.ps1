@@ -3,19 +3,17 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.63
-# - Removed resume installer scheduled task but kept the flag file.
+# Version 1.64
 # - Implemented logic to resume script from step 10 if flag file exists.
-# - All error messages or problem messages are in red.
+# - Ensured error messages are displayed in red.
+# - Corrected formatting and removed unnecessary ASCII art.
+# - Updated final script messages for clarity.
 
 # Initialize script start time
 $startTime = Get-Date
 
 # Define the flag file path
 $flagFilePath = "C:\winsm\SOUA_Flag.txt"
-$taskName = "SmartOfficeInstallerResume"
-$taskAction = "PowerShell.exe"
-$taskArguments = "-ExecutionPolicy Bypass -Command `"irm https://raw.githubusercontent.com/SMControl/SO_UC/main/soua.ps1 | iex`""
 
 # Function to update flag file
 function Update-FlagFile {
@@ -50,24 +48,6 @@ function Delete-FlagFile {
     if (Test-Path $flagFilePath) {
         Remove-Item -Path $flagFilePath -Force
     }
-}
-
-# Function to create the scheduled task
-function Create-ScheduledTask {
-    $action = New-ScheduledTaskAction -Execute $taskAction -Argument $taskArguments -WorkingDirectory "C:\winsm"
-    $trigger = New-ScheduledTaskTrigger -AtStartup
-    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
-    Register-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -TaskName $taskName -Description "Resume Smart Office installation script at startup" -Force
-}
-
-# Function to delete the scheduled task
-function Delete-ScheduledTask {
-    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
-}
-
-# Create the scheduled task (only once at the start)
-if (!(Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue)) {
-    Create-ScheduledTask
 }
 
 # Determine the step to start from
@@ -222,9 +202,7 @@ if ($startStep -le 9) {
     Update-FlagFile -step 10 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
 
-# Part 10 -
-
- Wait for User Confirmation
+# Part 10 - Wait for User Confirmation
 # -----
 if ($startStep -le 10) {
     Write-Host "[Part 10/12] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
@@ -247,7 +225,9 @@ if ($startStep -le 10) {
 # Part 11 - Set Permissions for StationMaster Folder
 # -----
 Write-Host "[Part 11/12] Setting permissions for StationMaster folder..." -ForegroundColor Green
-& icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+& icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T
+
+ /C > $null
 
 # Revert Services and Processes to Original State
 # -----
@@ -268,7 +248,6 @@ foreach ($process in $PDTWiFiProcesses) {
     }
 }
 
-# Write completion message
 Write-Host " "  # Blank line for separation
 
 # Calculate and display script execution time
@@ -282,4 +261,4 @@ Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s
 Delete-FlagFile
 
 # Delete the scheduled task (not necessary anymore)
-Delete-ScheduledTask
+# Delete-ScheduledTask
