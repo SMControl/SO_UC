@@ -8,7 +8,7 @@
 # - Start SO_UC.exe minimized.
 # - Moved flag file to C:\winsm for consistent access.
 # - Added deletion of scheduled task and flag file at script end.
-# - Hide SO_UC.exe
+# - Fully hide SO_UC.exe
 
 # Initialize script start time
 $startTime = Get-Date
