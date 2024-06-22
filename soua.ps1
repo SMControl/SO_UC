@@ -3,7 +3,7 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.61
+# Version 1.70
 # - Added red-colored error messages for better visibility.
 # - Updated flagfile line in part 9
 # - cleaned up end messages
@@ -233,8 +233,12 @@ if ($startStep -le 10) {
             $processRunning = $true
             Write-Host "Smart Office is still running. Please close it and press Enter to continue..." -ForegroundColor White
             Read-Host
-        }
+       
+
+ }
     }
+
+    Write-Host "[WARNING] Rebooting is not supported in this version of the script." -ForegroundColor Yellow
 
     Update-FlagFile -step 11 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
@@ -268,4 +272,4 @@ $endTime = Get-Date
 $executionTime = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
-Write-Host "Script completed succesfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
+Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
