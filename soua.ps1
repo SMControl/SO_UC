@@ -3,43 +3,12 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.101" -ForegroundColor Green
-# - fixed part 9 not working because of path issue
+Write-Host "Version 1.102" -ForegroundColor Green
+# - removed flag file handling and resume capability
+
 
 
 Write-Host "---" -ForegroundColor Green
-# Initialize script start time
-$startTime = Get-Date
-
-# Ensure the directory exists for the flag file
-$winsmDir = "C:\winsm"
-if (-not (Test-Path $winsmDir -PathType Container)) {
-    try {
-        New-Item -Path $winsmDir -ItemType Directory -ErrorAction Stop | Out-Null
-    } catch {
-        # Handle directory creation error silently
-        exit
-    }
-}
-
-# Define the flag file path
-$flagFilePath = "$winsmDir\SOUA_Flag.txt"
-
-# Check if flag file exists to determine starting point
-if (Test-Path $flagFilePath -PathType Leaf) {
-    $startStep = 10
-    Write-Host "Resuming from previous position..." -ForegroundColor Yellow
-} else {
-    $startStep = 0
-    # Create flag file silently
-    try {
-        New-Item -Path $flagFilePath -ItemType File -ErrorAction Stop | Out-Null
-    } catch {
-        # Handle flag file creation error silently
-        exit
-    }
-}
-
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -57,15 +26,13 @@ if (-not (Test-Admin)) {
 
 # Part 2 - Check for Running Smart Office Processes
 # -----
-if ($startStep -le 2) {
-    Write-Host "[Part 2/13] Checking for running Smart Office processes..." -ForegroundColor Green
-    $processesToCheck = @("Sm32Main", "Sm32")
-    foreach ($process in $processesToCheck) {
-        if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-            Write-Host "Error: Smart Office process '$process' is running. Close it and retry." -ForegroundColor Red
-            pause
-            exit
-        }
+Write-Host "[Part 2/13] Checking for running Smart Office processes..." -ForegroundColor Green
+$processesToCheck = @("Sm32Main", "Sm32")
+foreach ($process in $processesToCheck) {
+    if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
+        Write-Host "Error: Smart Office process '$process' is running. Close it and retry." -ForegroundColor Red
+        pause
+        exit
     }
 }
 
@@ -102,106 +69,85 @@ try {
 
 # Part 5 - Check for Firebird Installation
 # -----
-if ($startStep -le 5) {
-    Write-Host "[Part 5/13] Checking for Firebird installation..." -ForegroundColor Green
-    $firebirdDir = "C:\Program Files (x86)\Firebird"
-    $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
-    if (-not (Test-Path $firebirdDir)) {
-        try {
-            Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
-        } catch {
-            Write-Host "Error installing Firebird: $_" -ForegroundColor Red
-            exit
-        }
+Write-Host "[Part 5/13] Checking for Firebird installation..." -ForegroundColor Green
+$firebirdDir = "C:\Program Files (x86)\Firebird"
+$firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
+if (-not (Test-Path $firebirdDir)) {
+    try {
+        Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
+    } catch {
+        Write-Host "Error installing Firebird: $_" -ForegroundColor Red
+        exit
     }
 }
 
 # Part 6 - Stop SMUpdates.exe if Running
 # -----
-if ($startStep -le 6) {
-    Write-Host "[Part 6/13] Checking and stopping SMUpdates.exe if running..." -ForegroundColor Green
-    try {
-        Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
-    } catch {
-        Write-Host "Error stopping SMUpdates.exe: $_" -ForegroundColor Red
-        exit
-    }
+Write-Host "[Part 6/13] Checking and stopping SMUpdates.exe if running..." -ForegroundColor Green
+try {
+    Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+} catch {
+    Write-Host "Error stopping SMUpdates.exe: $_" -ForegroundColor Red
+    exit
 }
 
 # Part 7 - Check and Manage Smart Office Live Sales Service
 # -----
-if ($startStep -le 7) {
-    Write-Host "[Part 7/13] Checking and managing Smart Office Live Sales service..." -ForegroundColor Green
-    $ServiceName = "srvSOLiveSales"
-    $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+Write-Host "[Part 7/13] Checking and managing Smart Office Live Sales service..." -ForegroundColor Green
+$ServiceName = "srvSOLiveSales"
+$service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 
-    if ($service -and $service.Status -eq 'Running') {
-        try {
-            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-            Set-Service -Name $ServiceName -StartupType Disabled
-        } catch {
-            Write-Host "Error stopping service '$ServiceName': $_" -ForegroundColor Red
-            exit
-        }
+if ($service -and $service.Status -eq 'Running') {
+    try {
+        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        Set-Service -Name $ServiceName -StartupType Disabled
+    } catch {
+        Write-Host "Error stopping service '$ServiceName': $_" -ForegroundColor Red
+        exit
     }
 }
 
 # Part 8 - Check and Manage PDTWiFi Processes
 # -----
-if ($startStep -le 8) {
-    Write-Host "[Part 8/13] Checking and managing PDTWiFi processes..." -ForegroundColor Green
-    $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
-    foreach ($process in $PDTWiFiProcesses) {
-        try {
-            $p = Get-Process -Name $process -ErrorAction SilentlyContinue
-            if ($p) {
-                Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
-            }
-        } catch {
-            Write-Host "Error managing process '$process': $_" -ForegroundColor Red
-            exit
+Write-Host "[Part 8/13] Checking and managing PDTWiFi processes..." -ForegroundColor Green
+$PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
+foreach ($process in $PDTWiFiProcesses) {
+    try {
+        $p = Get-Process -Name $process -ErrorAction SilentlyContinue
+        if ($p) {
+            Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
         }
+    } catch {
+        Write-Host "Error managing process '$process': $_" -ForegroundColor Red
+        exit
     }
 }
 
 # Part 9 - Launch Setup Executable
 # -----
-if ($startStep -le 9) {
-    Write-Host "[Part 9/13] Launching Smart Office setup executable..." -ForegroundColor Green
-    $setupDir = "C:\Path\To\Your\SmartOffice_Installer"  # Adjust this path to match your setup directory
-    Write-Host "Searching for setup executable in: $setupDir"
+Write-Host "[Part 9/13] Launching Smart Office setup executable..." -ForegroundColor Green
+$setupDir = "C:\Path\To\Your\SmartOffice_Installer"  # Adjust this path to match your setup directory
+$setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
-    try {
-        $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ErrorAction Stop
-
-        if ($setupExe) {
-            Write-Host "Found setup executable: $($setupExe.FullName)"
-            Start-Process -FilePath $setupExe.FullName -Wait
-        } else {
-            Write-Host "Error: Smart Office setup executable not found in '$setupDir'." -ForegroundColor Red
-            exit
-        }
-    } catch {
-        Write-Host "Error retrieving setup executable: $_" -ForegroundColor Red
-        exit
-    }
+if ($setupExe) {
+    Start-Process -FilePath $setupExe.FullName -Wait
+} else {
+    Write-Host "Error: Smart Office setup executable not found in '$setupDir'." -ForegroundColor Red
+    exit
 }
-
 
 # Part 10 - Wait for User Confirmation
 # -----
 Write-Host "[Part 10/13] Post Installation" -ForegroundColor Green
-if ($startStep -le 10) {
-    Write-Host "[Part 10/13] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
-    Read-Host
+Write-Host "[Part 10/13] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
+Read-Host
 
-    # Check for Running Smart Office Processes Again
-    $processesToCheck = @("Sm32Main", "Sm32")
-    foreach ($process in $processesToCheck) {
-        if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-            Write-Host "Smart Office is still running. Please close it and press Enter to continue..." -ForegroundColor Red
-            Read-Host
-        }
+# Check for Running Smart Office Processes Again
+$processesToCheck = @("Sm32Main", "Sm32")
+foreach ($process in $processesToCheck) {
+    if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
+        Write-Host "Smart Office is still running. Please close it and press Enter to continue..." -ForegroundColor Red
+        Read-Host
     }
 }
 
@@ -233,11 +179,6 @@ try {
 # Part 13 - Clean Up and Finish
 # -----
 Write-Host "[Part 13/13] Cleaning up and finishing script..." -ForegroundColor Green
-
-# Delete the flag file
-Remove-Item -Path $flagFilePath -Force -ErrorAction SilentlyContinue
-
-
 
 Write-Host " "
 
