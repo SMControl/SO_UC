@@ -1,4 +1,6 @@
-Write-Host "SOUA.ps1 - Version 1.108" -ForegroundColor Green
+Write-Host "Starting SOUA.ps1 - Version 1.112" -ForegroundColor Green
+# ---
+# - firebird.exe count and warnings if more than 1
 
 # Initialize script start time
 $startTime = Get-Date
@@ -48,12 +50,16 @@ Write-Host "[Part 3] Downloading SO_UC.exe if necessary..." -ForegroundColor Gre
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
+    Write-Host "SO_UC.exe not found. Downloading from $SO_UC_URL..." -ForegroundColor Yellow
     try {
         Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
+        Write-Host "SO_UC.exe downloaded successfully." -ForegroundColor Green
     } catch {
         Write-Host "Error downloading SO_UC.exe: $_" -ForegroundColor Red
         exit
     }
+} else {
+    Write-Host "SO_UC.exe already exists in $workingDir. Skipping download." -ForegroundColor Yellow
 }
 
 # Part 4 - Check for Firebird Installation
@@ -62,19 +68,30 @@ Write-Host "[Part 4] Checking for Firebird installation..." -ForegroundColor Gre
 $firebirdDir = "C:\Program Files (x86)\Firebird"
 $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
 if (-not (Test-Path $firebirdDir)) {
+    Write-Host "Firebird not found. Installing Firebird from $firebirdInstallerURL..." -ForegroundColor Yellow
     try {
         Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
+        Write-Host "Firebird installed successfully." -ForegroundColor Green
     } catch {
         Write-Host "Error installing Firebird: $_" -ForegroundColor Red
         exit
     }
+} else {
+    Write-Host "Firebird is already installed in $firebirdDir. Skipping installation." -ForegroundColor Yellow
 }
 
 # Part 5 - Stop SMUpdates if Running
 # -----
 Write-Host "[Part 5] Stopping SMUpdates if running..." -ForegroundColor Green
 try {
-    Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+    $smUpdatesProcess = Get-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+    if ($smUpdatesProcess) {
+        Write-Host "Stopping SMUpdates process..." -ForegroundColor Yellow
+        Stop-Process -Name "SMUpdates" -Force -ErrorAction SilentlyContinue
+        Write-Host "SMUpdates stopped successfully." -ForegroundColor Green
+    } else {
+        Write-Host "SMUpdates is not running." -ForegroundColor Yellow
+    }
 } catch {
     Write-Host "Error stopping SMUpdates.exe: $_" -ForegroundColor Red
     exit
@@ -87,15 +104,23 @@ $ServiceName = "srvSOLiveSales"
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 $wasRunning = $false
 
-if ($service -and $service.Status -eq 'Running') {
-    $wasRunning = $true
-    try {
-        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-        Set-Service -Name $ServiceName -StartupType Disabled
-    } catch {
-        Write-Host "Error stopping service '$ServiceName': $_" -ForegroundColor Red
-        exit
+if ($service) {
+    if ($service.Status -eq 'Running') {
+        $wasRunning = $true
+        Write-Host "Stopping $ServiceName service..." -ForegroundColor Yellow
+        try {
+            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+            Set-Service -Name $ServiceName -StartupType Disabled
+            Write-Host "$ServiceName service stopped successfully and set to Disabled." -ForegroundColor Green
+        } catch {
+            Write-Host "Error stopping service '$ServiceName': $_" -ForegroundColor Red
+            exit
+        }
+    } else {
+        Write-Host "$ServiceName service is not running." -ForegroundColor Yellow
     }
+} else {
+    Write-Host "$ServiceName service not found." -ForegroundColor Yellow
 }
 
 # Part 7 - Manage PDTWiFi Processes
@@ -108,18 +133,40 @@ foreach ($process in $PDTWiFiProcesses) {
     $p = Get-Process -Name $process -ErrorAction SilentlyContinue
     if ($p) {
         $PDTWiFiStates[$process] = $p.Status
+        Write-Host "Stopping $process process..." -ForegroundColor Yellow
         Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
+        Write-Host "$process stopped successfully." -ForegroundColor Green
+    } else {
+        Write-Host "$process process is not running." -ForegroundColor Yellow
     }
 }
 
-# Part 8 - Launch Setup Executable
+# Part 8 - Check and Wait for Single Instance of Firebird.exe
 # -----
-Write-Host "[Part 8] Launching Smart Office setup executable..." -ForegroundColor Green
+Write-Host "[Part 8] Checking and waiting for a single instance of 'firebird.exe'..." -ForegroundColor Green
+
 $setupDir = "$workingDir\SmartOffice_Installer"
 if (-not (Test-Path $setupDir -PathType Container)) {
     Write-Host "Error: Setup directory '$setupDir' does not exist." -ForegroundColor Red
     exit
 }
+
+function WaitForSingleFirebirdInstance {
+    $firebirdProcesses = Get-Process -Name "firebird" -ErrorAction SilentlyContinue
+    while ($firebirdProcesses.Count -gt 1) {
+        Write-Host "Warning: Multiple instances of 'firebird.exe' are running. Please ensure only one instance is running." -ForegroundColor Yellow
+        Write-Host "Currently running instances: $($firebirdProcesses.Count)" -ForegroundColor Yellow
+        Start-Sleep -Seconds 1
+        $firebirdProcesses = Get-Process -Name "firebird" -ErrorAction SilentlyContinue
+    }
+}
+
+# Call function to wait for a single instance of Firebird
+WaitForSingleFirebirdInstance
+
+# Part 9 - Launch Smart Office Setup Executable
+# -----
+Write-Host "[Part 9] Proceeding to launch Smart Office setup executable..." -ForegroundColor Green
 
 $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if ($setupExe) {
@@ -135,9 +182,9 @@ if ($setupExe) {
     exit
 }
 
-# Part 9 - Wait for User Confirmation
+# Part 10 - Wait for User Confirmation
 # -----
-Write-Host "[Part 9] When Upgrade is FULLY complete, Press Enter...." -ForegroundColor Yellow
+Write-Host "[Part 10] When upgrade is FULLY complete, press Enter...." -ForegroundColor Yellow
 Read-Host
 
 # Check for Running Smart Office Processes Again
@@ -149,61 +196,70 @@ foreach ($process in $processesToCheck) {
     }
 }
 
-# Kill PDTWiFi and SMUpdates if running (after a reboot for example)
-$processesToKill = @("PDTWiFi", "PDTWiFi64", "SMUpdates")
-foreach ($process in $processesToKill) {
-    Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
-}
-
-# Part 10 - Set Permissions for StationMaster Folder
+# Part 11 - Set Permissions for StationMaster Folder
 # -----
-Write-Host "[Part 10] Setting permissions for StationMaster folder..." -ForegroundColor Green
+Write-Host "[Part 11] Setting permissions for StationMaster folder..." -ForegroundColor Green
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+    Write-Host "Permissions set for StationMaster folder." -ForegroundColor Green
 } catch {
     Write-Host "Error setting permissions for StationMaster folder: $_" -ForegroundColor Red
 }
 
-# Part 11 - Set Permissions for Firebird Folder
+# Part 12 - Set Permissions for Firebird Folder
 # -----
-Write-Host "[Part 11] Setting permissions for Firebird folder..." -ForegroundColor Green
+Write-Host "[Part 12] Setting permissions for Firebird folder..." -ForegroundColor Green
 try {
-    & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+   
+
+ & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+    Write-Host "Permissions set for Firebird folder." -ForegroundColor Green
 } catch {
-    Write-Host "Error setting permissions for Firebird folder: $_" -ForegroundColor Red
+    Write-Host "Error setting permissions for Firebird folder." -ForegroundColor Red
 }
 
-# Part 12 - Revert Smart Office Live Sales Service
+# Part 13 - Revert Smart Office Live Sales Service
 # -----
-Write-Host "[Part 12] Reverting Smart Office Live Sales service..." -ForegroundColor Green
+Write-Host "[Part 13] Reverting Smart Office Live Sales service..." -ForegroundColor Green
 if ($wasRunning) {
     try {
+        Write-Host "Setting $ServiceName service back to Automatic startup..." -ForegroundColor Yellow
         Set-Service -Name $ServiceName -StartupType Automatic
         Start-Service -Name $ServiceName
+        Write-Host "$ServiceName service reverted to its previous state." -ForegroundColor Green
     } catch {
         Write-Host "Error reverting service '$ServiceName' to its previous state: $_" -ForegroundColor Red
     }
+} else {
+    Write-Host "$ServiceName service was not running before, so no action needed." -ForegroundColor Yellow
 }
 
-# Part 13 - Revert PDTWiFi Processes
+# Part 14 - Revert PDTWiFi Processes
 # -----
-Write-Host "[Part 13] Reverting PDTWiFi processes..." -ForegroundColor Green
+Write-Host "[Part 14] Reverting PDTWiFi processes..." -ForegroundColor Green
+
 foreach ($process in $PDTWiFiProcesses) {
     if ($PDTWiFiStates.ContainsKey($process)) {
         $status = $PDTWiFiStates[$process]
         if ($status -eq 'Running') {
+            Write-Host "Starting $process process..." -ForegroundColor Yellow
             try {
                 Start-Process -FilePath "C:\Path\to\$process.exe" -ErrorAction SilentlyContinue
+                Write-Host "$process started successfully." -ForegroundColor Green
             } catch {
                 Write-Host "Error starting $process $_" -ForegroundColor Red
             }
+        } else {
+            Write-Host "$process was not running before, so no action needed." -ForegroundColor Yellow
         }
+    } else {
+        Write-Host "$process was not found in the previous state records. Skipping." -ForegroundColor Yellow
     }
 }
 
-# Part 14 - Clean Up and Finish
+# Part 15 - Clean up and finishing script...
 # -----
-Write-Host "[Part 14] Cleaning up and finishing script..." -ForegroundColor Green
+Write-Host "[Part 15] Cleaning up and finishing script..." -ForegroundColor Green
 
 # Calculate and display script execution time
 $endTime = Get-Date
