@@ -1,6 +1,10 @@
-Write-Host "Starting SOUA.ps1 - Version 1.112" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.113" -ForegroundColor Green
 # ---
 # - firebird.exe count and warnings if more than 1
+# - Improved management of PDTWiFi process states and retrieval for consistency between Part 7 and Part 14
+# - Updated error handling messages in Part 14
+# - Fixed formatting issue in error message in Part 14
+# ---
 
 # Initialize script start time
 $startTime = Get-Date
@@ -123,7 +127,7 @@ if ($service) {
     Write-Host "$ServiceName service not found." -ForegroundColor Yellow
 }
 
-# Part 7 - Manage PDTWiFi Processes
+# Part 7 - Manage PDTWiFi Processes and Log State
 # -----
 Write-Host "[Part 7] Managing PDTWiFi processes..." -ForegroundColor Green
 $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
@@ -138,8 +142,24 @@ foreach ($process in $PDTWiFiProcesses) {
         Write-Host "$process stopped successfully." -ForegroundColor Green
     } else {
         Write-Host "$process process is not running." -ForegroundColor Yellow
+        # If the process was not running, ensure it's reflected in the states
+        $PDTWiFiStates[$process] = "Not running"
     }
 }
+
+# Check again and update states for processes that were running before stopping
+foreach ($process in $PDTWiFiProcesses) {
+    if ($PDTWiFiStates[$process] -eq $null) {
+        $PDTWiFiStates[$process] = "Running"
+    }
+}
+
+# Log PDTWiFi states to a temporary file
+$PDTWiFiStatesFilePath = "$workingDir\PDTWiFiStates.txt"
+$PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | Out-File -FilePath $PDTWiFiStatesFilePath
+
+Write-Host "PDTWiFi states logged to: $PDTWiFiStatesFilePath" -ForegroundColor Green
+
 
 # Part 8 - Check and Wait for Single Instance of Firebird.exe
 # -----
@@ -210,9 +230,7 @@ try {
 # -----
 Write-Host "[Part 12] Setting permissions for Firebird folder..." -ForegroundColor Green
 try {
-   
-
- & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+    & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
     Write-Host "Permissions set for Firebird folder." -ForegroundColor Green
 } catch {
     Write-Host "Error setting permissions for Firebird folder." -ForegroundColor Red
@@ -238,28 +256,52 @@ if ($wasRunning) {
 # -----
 Write-Host "[Part 14] Reverting PDTWiFi processes..." -ForegroundColor Green
 
+# Retrieve PDTWiFi states from the temporary file
+if (Test-Path $PDTWiFiStatesFilePath) {
+    $storedStates = Get-Content -Path $PDTWiFiStatesFilePath | ForEach-Object {
+        $parts = $_ -split ":"
+        $process = $parts[0].Trim()
+        $status = $parts[1].Trim()
+        [PSCustomObject]@{
+            Process = $process
+            Status = $status
+        }
+    }
+} else {
+    Write-Host "Error: PDTWiFiStates.txt not found. Unable to revert PDTWiFi processes." -ForegroundColor Red
+}
+
 foreach ($process in $PDTWiFiProcesses) {
-    if ($PDTWiFiStates.ContainsKey($process)) {
-        $status = $PDTWiFiStates[$process]
-        if ($status -eq 'Running') {
-            Write-Host "Starting $process process..." -ForegroundColor Yellow
-            try {
-                Start-Process -FilePath "C:\Path\to\$process.exe" -ErrorAction SilentlyContinue
-                Write-Host "$process started successfully." -ForegroundColor Green
-            } catch {
-                Write-Host "Error starting $process $_" -ForegroundColor Red
-            }
-        } else {
-            Write-Host "$process was not running before, so no action needed." -ForegroundColor Yellow
+    $currentStatus = $storedStates | Where-Object { $_.Process -eq $process } | Select-Object -ExpandProperty Status
+    if ($currentStatus -eq 'Running') {
+        Write-Host "Starting $process process..." -ForegroundColor Yellow
+        try {
+            Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process" -ErrorAction SilentlyContinue
+            Write-Host "$process started successfully." -ForegroundColor Green
+        } catch {
+            Write-Host "Error starting $process $_" -ForegroundColor Red
         }
     } else {
-        Write-Host "$process was not found in the previous state records. Skipping." -ForegroundColor Yellow
+        Write-Host "$process was not running before, so no action needed." -ForegroundColor Yellow
     }
 }
 
-# Part 15 - Clean up and finishing script...
+# Clean up and remove temporary file
+if (Test-Path $PDTWiFiStatesFilePath) {
+    Remove-Item -Path $PDTWiFiStatesFilePath -Force
+    Write-Host "Removed temporary file: $PDTWiFiStatesFilePath" -ForegroundColor Green
+}
+
+
+# Part 15 - Clean up and Finish Script
 # -----
 Write-Host "[Part 15] Cleaning up and finishing script..." -ForegroundColor Green
+
+# Remove temporary files
+if (Test-Path $PDTWiFiStatesFilePath) {
+    Remove-Item -Path $PDTWiFiStatesFilePath -Force
+    Write-Host "Removed temporary file: $PDTWiFiStatesFilePath" -ForegroundColor Green
+}
 
 # Calculate and display script execution time
 $endTime = Get-Date
