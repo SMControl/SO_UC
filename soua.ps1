@@ -3,12 +3,13 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.52
+# Version 1.53
 # - Modified scheduled task principal to run with highest privileges as current user context.
 # - Start SO_UC.exe minimized.
 # - Moved flag file to C:\winsm for consistent access.
 # - Added deletion of scheduled task and flag file at script end.
-# - Fully hide SO_UC.exe
+# - Hide SO_UC.exe
+# - Ensure scheduled task runs from C:\winsm
 
 # Initialize script start time
 $startTime = Get-Date
@@ -49,7 +50,7 @@ function Read-FlagFile {
 
 # Function to create the scheduled task
 function Create-ScheduledTask {
-    $action = New-ScheduledTaskAction -Execute $taskAction -Argument $taskArguments -WorkingDirectory $env:SystemRoot\System32
+    $action = New-ScheduledTaskAction -Execute $taskAction -Argument $taskArguments -WorkingDirectory "C:\winsm"
     $trigger = New-ScheduledTaskTrigger -AtStartup
     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
     Register-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -TaskName $taskName -Description "Resume Smart Office installation script at startup" -Force
@@ -216,7 +217,9 @@ if ($startStep -le 10) {
         }
     }
 
-    Update-FlagFile -step 11 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
+    Update
+
+-FlagFile -step 11 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
 
 # Part 11 - Set Permissions for StationMaster Folder
