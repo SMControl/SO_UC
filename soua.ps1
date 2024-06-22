@@ -217,7 +217,36 @@ if ($startStep -le 10) {
     Update-FlagFile -step 11 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
 
-# Part 11 - Set Permissions for StationMaster Folder and Revert Changes
+# Part 11 - Set Permissions for StationMaster Folder
 # -----
-if ($startStep -le 11) {
-    Write-Host "[Part 
+Write-Host "[Part 11/12] Setting permissions for StationMaster folder..." -ForegroundColor Green
+Stop-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+& icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
+
+# Revert Services and Processes to Original State
+# -----
+Write-Host "[Revert] Reverting services and processes to original state..." -ForegroundColor Yellow
+# Revert srvSOLiveSales service
+if ($initialServiceState -eq 'Running') {
+    Set-Service -Name $ServiceName -StartupType Automatic
+    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+} elseif ($initialServiceState -eq 'Stopped') {
+    Set-Service -Name $ServiceName -StartupType Manual
+}
+
+# Revert PDTWiFi processes
+foreach ($process in $PDTWiFiProcesses) {
+    $p = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if (!$p) {
+        Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process.exe"
+    }
+}
+
+Write-Host "All tasks completed successfully." -ForegroundColor Green
+
+# Calculate and display script execution time
+$endTime = Get-Date
+$executionTime = $endTime - $startTime
+$totalMinutes = [math]::Floor($executionTime.TotalMinutes)
+$totalSeconds = $executionTime.Seconds
+Write-Host "Script completed in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
