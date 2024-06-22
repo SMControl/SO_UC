@@ -3,7 +3,7 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.54
+# Version 1.55
 # - Added deletion of scheduled task and flag file at script end.
 # - Hide SO_UC.exe
 # - Ensure scheduled task runs from C:\winsm
@@ -116,7 +116,8 @@ if ($startStep -le 3) {
 Write-Host "[Part 4/12] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
 
 # Display message about firewall
-Write-Host "You may need to allow SO_UC.exe through the Firewall. Its job is to get the latest version of Smart Office Setup." -ForegroundColor Cyan
+Write-Host "[WARNING] Please ensure SO_UC.exe is allowed through the firewall." -ForegroundColor Cyan
+Write-Host "[WARNING] It's responsible for retrieving the latest Smart Office Setup." -ForegroundColor Cyan
 
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
