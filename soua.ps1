@@ -3,9 +3,8 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.90" -ForegroundColor Green
-# - adding timing information
-# - add timing table
+Write-Host "Version 1.91" -ForegroundColor Green
+# - fixed part 9 paths
 
 # Initialize script start time
 $startTime = Get-Date
@@ -210,11 +209,29 @@ if ($startStep -le 8) {
 # -----
 if ($startStep -le 9) {
     Write-Host "[Part 9/13] Launching Smart Office setup executable..." -ForegroundColor Green
-    $setupDir = "$workingDir\SmartOffice_Installer"
+    $setupDir = "C:\SmartOffice_Installer"
+
+    # Check if the setup directory exists
+    if (-not (Test-Path $setupDir -PathType Container)) {
+        Write-Host "Error: Setup directory '$setupDir' not found. Exiting." -ForegroundColor Red
+        exit
+    }
+
+    # Get the latest setup executable
     $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
-    if ($setupExe) {
+    # Check if a setup executable was found
+    if (-not $setupExe) {
+        Write-Host "Error: No setup executable (Setup*.exe) found in '$setupDir'. Exiting." -ForegroundColor Red
+        exit
+    }
+
+    # Launch the setup executable
+    try {
         Start-Process -FilePath $setupExe.FullName -Wait
+    } catch {
+        Write-Host "Error starting setup executable: $_" -ForegroundColor Red
+        exit
     }
 }
 
