@@ -3,8 +3,8 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.80" -ForegroundColor Green
-# - better define flagfile part and removed part 3
+Write-Host "Version 1.81" -ForegroundColor Green
+# - Added message for resuming from previous position if flag file exists
 
 Write-Host "---" -ForegroundColor Green
 # Initialize script start time
@@ -27,6 +27,7 @@ $flagFilePath = "$winsmDir\SOUA_Flag.txt"
 # Check if flag file exists to determine starting point
 if (Test-Path $flagFilePath -PathType Leaf) {
     $startStep = 10
+    Write-Host "Resuming from previous position..." -ForegroundColor Yellow
 } else {
     $startStep = 0
     # Create flag file silently
@@ -222,6 +223,8 @@ Write-Host "[Part 13/13] Cleaning up and finishing script..." -ForegroundColor G
 
 # Delete the flag file
 Remove-Item -Path $flagFilePath -Force -ErrorAction SilentlyContinue
+
+
 
 Write-Host " "
 
