@@ -3,8 +3,8 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.91" -ForegroundColor Green
-# - fixed part 9 paths
+Write-Host "Version 1.92" -ForegroundColor Green
+# - fixing upgrade statistics
 
 # Initialize script start time
 $startTime = Get-Date
@@ -21,47 +21,48 @@ if (-not (Test-Path $logDir -PathType Container)) {
 }
 
 # Display upgrade statistics
-$logFilePath = "$logDir\Upgrade_Log.txt"
+$logFilePath = "C:\winsm\SmartOffice_Installer\Update_Assistant_Logs_and_Records\Upgrade_Log.txt"
+
 if (Test-Path $logFilePath) {
-    $logEntries = Get-Content -Path $logFilePath
-    $totalUpgrades = $logEntries.Count
+    try {
+        $logEntries = Get-Content -Path $logFilePath
+        $totalUpgrades = $logEntries.Count
 
-    if ($totalUpgrades -gt 0) {
-        $durations = $logEntries | ForEach-Object {
-            if ($_ -match 'Duration: (\d+)m (\d+)s') {
-                $minutes = [int]$matches[1]
-                $seconds = [int]$matches[2]
-                $minutes * 60 + $seconds
+        if ($totalUpgrades -gt 0) {
+            $durations = $logEntries | ForEach-Object {
+                if ($_ -match 'Duration: (\d+)m (\d+)s') {
+                    $minutes = [int]$matches[1]
+                    $seconds = [int]$matches[2]
+                    $minutes * 60 + $seconds
+                }
             }
+
+            if ($durations) {
+                $shortest = $durations | Measure-Object -Minimum | Select-Object -ExpandProperty Minimum
+                $longest = $durations | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
+                $average = [math]::Round(($durations | Measure-Object -Average).Average)
+                $mean = [math]::Round(($durations | Measure-Object -Median).Median)
+
+                Write-Host "Upgrade Statistics:" -ForegroundColor Green
+                Write-Host "-------------------" -ForegroundColor Green
+                Write-Host "Total Number of Upgrades Performed: $totalUpgrades"
+                Write-Host "Shortest Upgrade: $(int)$(($shortest - $shortest % 60) / 60)m $(($shortest % 60))s"
+                Write-Host "Longest Upgrade: $(int)$(($longest - $longest % 60) / 60)m $(($longest % 60))s"
+                Write-Host "Average Upgrade: $(int)$(($average - $average % 60) / 60)m $(($average % 60))s"
+                Write-Host "Mean Upgrade: $(int)$(($mean - $mean % 60) / 60)m $(($mean % 60))s"
+                Write-Host "-------------------" -ForegroundColor Green
+                Write-Host " "
+            } else {
+                Write-Host "No valid upgrade durations found in the log file." -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "No upgrade entries found in the log file." -ForegroundColor Yellow
         }
-
-        $shortest = $durations | Measure-Object -Minimum | Select-Object -ExpandProperty Minimum
-        $longest = $durations | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
-        $average = [math]::Round(($durations | Measure-Object -Average).Average)
-        $mean = [math]::Round(($durations | Measure-Object -Median).Median)
-
-        Write-Host "Upgrade Statistics:" -ForegroundColor Green
-        Write-Host "-------------------" -ForegroundColor Green
-
-        # Define the table headers and data
-        $tableHeaders = "Total Number of Upgrades Performed", "Shortest Upgrade", "Longest Upgrade", "Average Upgrade", "Mean Upgrade"
-        $tableData = @(
-            $totalUpgrades,
-            "$(int)$(($shortest - $shortest % 60) / 60)m $(($shortest % 60))s",
-            "$(int)$(($longest - $longest % 60) / 60)m $(($longest % 60))s",
-            "$(int)$(($average - $average % 60) / 60)m $(($average % 60))s",
-            "$(int)$(($mean - $mean % 60) / 60)m $(($mean % 60))s"
-        )
-
-        # Display the table
-        $table = @()
-        $table += $tableHeaders
-        $table += $tableData
-        $formatString = "{0,-35} {1,-20} {2,-20} {3,-20} {4,-20}"
-        $table | ForEach-Object { Write-Host ($formatString -f $_) }
-        Write-Host "-------------------" -ForegroundColor Green
-        Write-Host " "
+    } catch {
+        Write-Host "Error reading upgrade log file: $_" -ForegroundColor Red
     }
+} else {
+    Write-Host "Upgrade log file not found: $logFilePath" -ForegroundColor Red
 }
 # Define the flag file path
 $winsmDir = "C:\winsm"
