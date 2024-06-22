@@ -1,13 +1,6 @@
-Write-Host "SOUA.ps1" -ForegroundColor Green
-# ---
-# This script assists in installing Smart Office.
-# It ensures necessary prerequisites are met, processes are managed, and services are configured.
-# ---
-Write-Host "Version 1.107" -ForegroundColor Green
-# - Fixed setup directory path issue
-# - Removed flag file handling
-
-Write-Host "---" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.108" -ForegroundColor Green
+# --- Recent Changes
+# - Tidy up some small bits
 
 # Initialize script start time
 $startTime = Get-Date
@@ -53,11 +46,8 @@ foreach ($process in $processesToCheck) {
 
 # Part 4 - Download and Run SO_UC.exe Hidden if Necessary
 # -----
-Write-Host "[Part 4/13] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
-
-# Display message about firewall
-Write-Host "[WARNING] Please ensure SO_UC.exe is allowed through the firewall." -ForegroundColor Cyan
-Write-Host "[WARNING] It's responsible for retrieving the latest Smart Office Setup." -ForegroundColor Cyan
+Write-Host "[Part 4/13] Downloading latest Smart Office Setup if necessary. Please Wait..." -ForegroundColor Green
+Write-Host "[WARNING] Please ensure SO_UC.exe is allowed through the firewall, to download latest Smart Office Installer." -ForegroundColor Orange
 
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
@@ -155,7 +145,6 @@ if ($setupExe) {
     Write-Host "Found setup executable: $($setupExe.FullName)" -ForegroundColor Green
     try {
         Start-Process -FilePath $setupExe.FullName -Wait
-        Write-Host "Smart Office setup completed successfully." -ForegroundColor Green
     } catch {
         Write-Host "Error starting setup executable: $_" -ForegroundColor Red
         exit
@@ -180,16 +169,15 @@ foreach ($process in $processesToCheck) {
     }
 }
 
-# Part 11 - Set Permissions for StationMaster Folder
-# -----
-
-# Silently kill processes PDTWiFi and SMUpdates if running
+# Kill PDTWiFi and SMUpdates if running (after a reboot for example)
 $processesToKill = @("PDTWiFi", "PDTWiFi64", "SMUpdates")
 foreach ($process in $processesToKill) {
     Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host "[Part 11/13] Setting permissions for StationMaster folder..." -ForegroundColor Green
+# Part 11 - Set Permissions for StationMaster Folder
+# -----
+Write-Host "[Part 11/13] Checking Stationmaster folder..." -ForegroundColor Green
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -198,7 +186,7 @@ try {
 
 # Part 12 - Set Permissions for Firebird Folder
 # -----
-Write-Host "[Part 12/13] Setting permissions for Firebird folder..." -ForegroundColor Green
+Write-Host "[Part 12/13] Checking Firebird folder..." -ForegroundColor Green
 try {
     & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -208,8 +196,6 @@ try {
 # Part 13 - Clean Up and Finish
 # -----
 Write-Host "[Part 13/13] Cleaning up and finishing script..." -ForegroundColor Green
-
-Write-Host " "
 
 # Calculate and display script execution time
 $endTime = Get-Date
