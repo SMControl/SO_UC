@@ -3,9 +3,10 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.105" -ForegroundColor Green
+Write-Host "Version 1.106" -ForegroundColor Green
 # - Removed flag file handling and resume capability
 # - Set working directory to "C:\winsm"
+# - Enhanced Part 9 to ensure setup executable is found and executed properly
 
 Write-Host "---" -ForegroundColor Green
 
@@ -165,7 +166,6 @@ if ($setupExe) {
     exit
 }
 
-
 # Part 10 - Wait for User Confirmation
 # -----
 Write-Host "[Part 10/13] Post Installation" -ForegroundColor Green
@@ -184,7 +184,9 @@ foreach ($process in $processesToCheck) {
 # Part 11 - Set Permissions for StationMaster Folder
 # -----
 
-# Silently kill processes PDTWiFi and SMUpdates if running
+# Silently kill processes PDTWiFi and SM
+
+Updates if running
 $processesToKill = @("PDTWiFi", "PDTWiFi64", "SMUpdates")
 foreach ($process in $processesToKill) {
     Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
