@@ -3,21 +3,53 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.81" -ForegroundColor Green
-# - Added message for resuming from previous position if flag file exists
+Write-Host "Version 1.84" -ForegroundColor Green
+# - Added logging of upgrade timing information
+# - Added display of upgrade statistics at script start
 
-Write-Host "---" -ForegroundColor Green
 # Initialize script start time
 $startTime = Get-Date
 
-# Ensure the directory exists for the flag file
-$winsmDir = "C:\winsm"
-if (-not (Test-Path $winsmDir -PathType Container)) {
+# Initialize log directory
+$logDir = "C:\winsm\SmartOffice_Installer\Update_Assistant_Logs_and_Records"
+if (-not (Test-Path $logDir -PathType Container)) {
     try {
-        New-Item -Path $winsmDir -ItemType Directory -ErrorAction Stop | Out-Null
+        New-Item -Path $logDir -ItemType Directory -ErrorAction Stop | Out-Null
     } catch {
-        # Handle directory creation error silently
+        Write-Host "Error creating log directory: $_" -ForegroundColor Red
         exit
+    }
+}
+
+# Display upgrade statistics
+$logFilePath = "$logDir\Upgrade_Log.txt"
+if (Test-Path $logFilePath) {
+    $logEntries = Get-Content -Path $logFilePath
+    $totalUpgrades = $logEntries.Count
+
+    if ($totalUpgrades -gt 0) {
+        $durations = $logEntries | ForEach-Object {
+            if ($_ -match 'Duration: (\d+)m (\d+)s') {
+                $minutes = [int]$matches[1]
+                $seconds = [int]$matches[2]
+                $minutes * 60 + $seconds
+            }
+        }
+
+        $shortest = $durations | Measure-Object -Minimum | Select-Object -ExpandProperty Minimum
+        $longest = $durations | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
+        $average = [math]::Round(($durations | Measure-Object -Average).Average)
+        $mean = [math]::Round(($durations | Measure-Object -Median).Median)
+
+        Write-Host "Upgrade Statistics:" -ForegroundColor Green
+        Write-Host "-------------------" -ForegroundColor Green
+        Write-Host "Total Number of Upgrades Performed: $totalUpgrades"
+        Write-Host "Shortest Upgrade: $(int)$(($shortest - $shortest % 60) / 60)m $(($shortest % 60))s"
+        Write-Host "Longest Upgrade: $(int)$(($longest - $longest % 60) / 60)m $(($longest % 60))s"
+        Write-Host "Average Upgrade: $(int)$(($average - $average % 60) / 60)m $(($average % 60))s"
+        Write-Host "Mean Upgrade: $(int)$(($mean - $mean % 60) / 60)m $(($mean % 60))s"
+        Write-Host "-------------------" -ForegroundColor Green
+        Write-Host " "
     }
 }
 
@@ -38,7 +70,6 @@ if (Test-Path $flagFilePath -PathType Leaf) {
         exit
     }
 }
-
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -179,7 +210,9 @@ if ($startStep -le 9) {
 # -----
 Write-Host "[Part 10/13] Post Installation" -ForegroundColor Green
 if ($startStep -le 10) {
-    Write-Host "[Part 10/13] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
+    Write-Host "[Part 10/13]
+
+ Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
     Read-Host
 
     # Check for Running Smart Office Processes Again
@@ -221,10 +254,14 @@ try {
 # -----
 Write-Host "[Part 13/13] Cleaning up and finishing script..." -ForegroundColor Green
 
+# Log timestamp, duration, and setup file used
+$logEntry = "Timestamp: $(Get-Date)"
+$logEntry += "`nDuration: $($totalMinutes)m $($totalSeconds)s"
+$logEntry += "`nSetup File: $($setupExe.Name)"
+Add-Content -Path $logFilePath -Value $logEntry
+
 # Delete the flag file
 Remove-Item -Path $flagFilePath -Force -ErrorAction SilentlyContinue
-
-
 
 Write-Host " "
 
