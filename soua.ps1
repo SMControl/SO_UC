@@ -3,8 +3,10 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.100" -ForegroundColor Green
+Write-Host "Version 1.101" -ForegroundColor Green
 # - fixed part 9 not working because of path issue
+
+
 Write-Host "---" -ForegroundColor Green
 # Initialize script start time
 $startTime = Get-Date
@@ -167,15 +169,24 @@ if ($startStep -le 8) {
 if ($startStep -le 9) {
     Write-Host "[Part 9/13] Launching Smart Office setup executable..." -ForegroundColor Green
     $setupDir = "C:\Path\To\Your\SmartOffice_Installer"  # Adjust this path to match your setup directory
-    $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    Write-Host "Searching for setup executable in: $setupDir"
 
-    if ($setupExe) {
-        Start-Process -FilePath $setupExe.FullName -Wait
-    } else {
-        Write-Host "Error: Smart Office setup executable not found in '$setupDir'." -ForegroundColor Red
+    try {
+        $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ErrorAction Stop
+
+        if ($setupExe) {
+            Write-Host "Found setup executable: $($setupExe.FullName)"
+            Start-Process -FilePath $setupExe.FullName -Wait
+        } else {
+            Write-Host "Error: Smart Office setup executable not found in '$setupDir'." -ForegroundColor Red
+            exit
+        }
+    } catch {
+        Write-Host "Error retrieving setup executable: $_" -ForegroundColor Red
         exit
     }
 }
+
 
 # Part 10 - Wait for User Confirmation
 # -----
