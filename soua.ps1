@@ -213,9 +213,7 @@ Write-Host " "
 
 # Calculate and display script execution time
 $endTime = Get-Date
-$executionTime
-
- = $endTime - $startTime
+$executionTime = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
 Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
