@@ -3,9 +3,9 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.84" -ForegroundColor Green
-# - Added logging of upgrade timing information
-# - Added display of upgrade statistics at script start
+Write-Host "Version 1.90" -ForegroundColor Green
+# - adding timing information
+# - add timing table
 
 # Initialize script start time
 $startTime = Get-Date
@@ -43,17 +43,29 @@ if (Test-Path $logFilePath) {
 
         Write-Host "Upgrade Statistics:" -ForegroundColor Green
         Write-Host "-------------------" -ForegroundColor Green
-        Write-Host "Total Number of Upgrades Performed: $totalUpgrades"
-        Write-Host "Shortest Upgrade: $(int)$(($shortest - $shortest % 60) / 60)m $(($shortest % 60))s"
-        Write-Host "Longest Upgrade: $(int)$(($longest - $longest % 60) / 60)m $(($longest % 60))s"
-        Write-Host "Average Upgrade: $(int)$(($average - $average % 60) / 60)m $(($average % 60))s"
-        Write-Host "Mean Upgrade: $(int)$(($mean - $mean % 60) / 60)m $(($mean % 60))s"
+
+        # Define the table headers and data
+        $tableHeaders = "Total Number of Upgrades Performed", "Shortest Upgrade", "Longest Upgrade", "Average Upgrade", "Mean Upgrade"
+        $tableData = @(
+            $totalUpgrades,
+            "$(int)$(($shortest - $shortest % 60) / 60)m $(($shortest % 60))s",
+            "$(int)$(($longest - $longest % 60) / 60)m $(($longest % 60))s",
+            "$(int)$(($average - $average % 60) / 60)m $(($average % 60))s",
+            "$(int)$(($mean - $mean % 60) / 60)m $(($mean % 60))s"
+        )
+
+        # Display the table
+        $table = @()
+        $table += $tableHeaders
+        $table += $tableData
+        $formatString = "{0,-35} {1,-20} {2,-20} {3,-20} {4,-20}"
+        $table | ForEach-Object { Write-Host ($formatString -f $_) }
         Write-Host "-------------------" -ForegroundColor Green
         Write-Host " "
     }
 }
-
 # Define the flag file path
+$winsmDir = "C:\winsm"
 $flagFilePath = "$winsmDir\SOUA_Flag.txt"
 
 # Check if flag file exists to determine starting point
@@ -210,9 +222,7 @@ if ($startStep -le 9) {
 # -----
 Write-Host "[Part 10/13] Post Installation" -ForegroundColor Green
 if ($startStep -le 10) {
-    Write-Host "[Part 10/13]
-
- Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
+    Write-Host "[Part 10/13] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
     Read-Host
 
     # Check for Running Smart Office Processes Again
@@ -264,6 +274,9 @@ Add-Content -Path $logFilePath -Value $logEntry
 Remove-Item -Path $flagFilePath -Force -ErrorAction SilentlyContinue
 
 Write-Host " "
+
+# Change directory back to C:\winsm
+Set-Location -Path "C:\winsm"
 
 # Calculate and display script execution time
 $endTime = Get-Date
