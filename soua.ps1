@@ -3,12 +3,9 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.58
-# - Removed scheduled task creation and deletion.
-# - Added logic to resume from flag file at step 10 if exists.
-# - Always ensure deletion of the flag file at the end.
+# Version 1.60
 # - Added red-colored error messages for better visibility.
-# - removed ascii art
+# - Updated flagfile line in part 9
 
 # Initialize script start time
 $startTime = Get-Date
@@ -212,20 +209,13 @@ if ($startStep -le 8) {
 if ($startStep -le 9) {
     Write-Host "[Part 9/12] Launching Smart Office setup executable..." -ForegroundColor Green
     $setupDir = "$workingDir\SmartOffice_Installer"
-    try {
-        $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
-        if ($setupExe) {
-            Start-Process -FilePath $setupExe.FullName -Wait
-        }
-    } catch {
-        Write-Host "Error launching setup executable: $_" -ForegroundColor Red
-        exit
+    if ($setupExe) {
+        Start-Process -FilePath $setupExe.FullName -Wait
     }
 
-    Update-FlagFile -step 10 -serviceState $service
-
-State -processesStopped $PDTWiFiProcesses
+    Update-FlagFile -step 10 -serviceState $serviceState -processesStopped $PDTWiFiProcesses
 }
 
 # Part 10 - Wait for User Confirmation
