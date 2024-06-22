@@ -172,6 +172,7 @@ if ($startStep -le 9) {
 
 # Part 10 - Wait for User Confirmation
 # -----
+Write-Host "[Part 10/13] Post Installation" -ForegroundColor Green
 if ($startStep -le 10) {
     Write-Host "[Part 10/13] Please press Enter when the Smart Office installation is FULLY finished..." -ForegroundColor White
     Read-Host
@@ -180,7 +181,7 @@ if ($startStep -le 10) {
     $processesToCheck = @("Sm32Main", "Sm32")
     foreach ($process in $processesToCheck) {
         if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-            Write-Host "Smart Office is still running. Please close it and press Enter to continue..." -ForegroundColor White
+            Write-Host "Smart Office is still running. Please close it and press Enter to continue..." -ForegroundColor Red
             Read-Host
         }
     }
@@ -210,7 +211,6 @@ try {
 } catch {
     Write-Host "Error setting permissions for Firebird folder: $_" -ForegroundColor Red
 }
-
 
 # Part 13 - Clean Up and Finish
 # -----
