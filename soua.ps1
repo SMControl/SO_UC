@@ -3,7 +3,7 @@ Write-Host "SOUA.ps1" -ForegroundColor Green
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-Write-Host "Version 1.102" -ForegroundColor Green
+Write-Host "Version 1.105" -ForegroundColor Green
 # - Removed flag file handling and resume capability
 # - Set working directory to "C:\winsm"
 
