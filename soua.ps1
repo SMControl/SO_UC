@@ -3,15 +3,18 @@
 # This script assists in installing Smart Office.
 # It ensures necessary prerequisites are met, processes are managed, and services are configured.
 # ---
-# Version 1.50
+# Version 1.52
 # - Modified scheduled task principal to run with highest privileges as current user context.
 # - Start SO_UC.exe minimized.
+# - Moved flag file to C:\winsm for consistent access.
+# - Added deletion of scheduled task and flag file at script end.
+# - Hide SO_UC.exe
 
 # Initialize script start time
 $startTime = Get-Date
 
 # Define the flag file path
-$flagFilePath = "$env:LOCALAPPDATA\SOUA_Flag.txt"
+$flagFilePath = "C:\winsm\SOUA_Flag.txt"
 $taskName = "SmartOfficeInstallerResume"
 $taskAction = "PowerShell.exe"
 $taskArguments = "-ExecutionPolicy Bypass -Command `"irm https://raw.githubusercontent.com/SMControl/SO_UC/main/soua.ps1 | iex`""
@@ -109,8 +112,7 @@ if ($startStep -le 3) {
     Update-FlagFile -step 4 -serviceState @{} -processesStopped @()
 }
 
-
-# Part 4 - Download and Run SO_UC.exe Minimized if Necessary
+# Part 4 - Download and Run SO_UC.exe Hidden if Necessary
 # -----
 Write-Host "[Part 4/12] Downloading latest Smart Office Setup if necessary..." -ForegroundColor Green
 $SO_UC_Path = "$workingDir\SO_UC.exe"
@@ -119,10 +121,10 @@ if (-not (Test-Path $SO_UC_Path)) {
     Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
 }
 
-# Start SO_UC.exe minimized
+# Start SO_UC.exe hidden
 $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
 $processStartInfo.FileName = $SO_UC_Path
-$processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
+$processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
 Start-Process -FilePath $processStartInfo.FileName -Wait -WindowStyle $processStartInfo.WindowStyle
 
@@ -243,6 +245,10 @@ foreach ($process in $PDTWiFiProcesses) {
 }
 
 Write-Host "All tasks completed successfully." -ForegroundColor Green
+
+# Delete the scheduled task and flag file
+Delete-ScheduledTask
+Remove-Item -Path $flagFilePath -Force
 
 # Calculate and display script execution time
 $endTime = Get-Date
