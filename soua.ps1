@@ -1,10 +1,10 @@
-Write-Host "SOUA.ps1 - Version 1.113" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.114" -ForegroundColor Green
 # ---
 # - firebird.exe count and warnings if more than 1
 # - Improved management of PDTWiFi process states and retrieval for consistency between Part 7 and Part 14
 # - Updated error handling messages in Part 14
 # - Fixed formatting issue in error message in Part 14
-# ---
+# - running souc was ommited, put that back in.
 
 # Initialize script start time
 $startTime = Get-Date
@@ -48,22 +48,31 @@ foreach ($process in $processesToCheck) {
     }
 }
 
-# Part 3 - Download SO_UC.exe if Necessary
+# Part 3 - Download SO_UC.exe if Necessary and Run it.
 # -----
 Write-Host "[Part 3] Downloading SO_UC.exe if necessary..." -ForegroundColor Green
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
-    Write-Host "SO_UC.exe not found. Downloading from $SO_UC_URL..." -ForegroundColor Yellow
+    Write-Host "SO_UC.exe not found. Downloading..." -ForegroundColor Yellow
     try {
         Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
-        Write-Host "SO_UC.exe downloaded successfully." -ForegroundColor Green
+        Write-Host "Downloaded successful." -ForegroundColor Green
     } catch {
-        Write-Host "Error downloading SO_UC.exe: $_" -ForegroundColor Red
+        Write-Host "Error downloading: $_" -ForegroundColor Red
         exit
     }
 } else {
-    Write-Host "SO_UC.exe already exists in $workingDir. Skipping download." -ForegroundColor Yellow
+    Write-Host "Already exists. Skipping download." -ForegroundColor Green
+}
+
+# Launching SO_UC.exe
+Write-Host "Launching SO_UC.exe..." -ForegroundColor Green
+Start-Process -FilePath $SO_UC_Path -NoNewWindow
+if ($?) {
+    Write-Host "Please allow always SO_UC.exe through Firewall. [Program obtains latest Smart Office setup.]" -ForegroundColor Yellow
+} else {
+    Write-Host "Failed to launch SO_UC.exe." -ForegroundColor Red
 }
 
 # Part 4 - Check for Firebird Installation
@@ -72,7 +81,7 @@ Write-Host "[Part 4] Checking for Firebird installation..." -ForegroundColor Gre
 $firebirdDir = "C:\Program Files (x86)\Firebird"
 $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
 if (-not (Test-Path $firebirdDir)) {
-    Write-Host "Firebird not found. Installing Firebird from $firebirdInstallerURL..." -ForegroundColor Yellow
+    Write-Host "Firebird not found. Installing Firebird..." -ForegroundColor Yellow
     try {
         Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
         Write-Host "Firebird installed successfully." -ForegroundColor Green
