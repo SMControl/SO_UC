@@ -1,6 +1,6 @@
-Write-Host "SOUA.ps1 - Version 1.115" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.116" -ForegroundColor Green
 # ---
-# - cleaned up commenting
+# - weird renaming issues with part 9
 
 # Initialize script start time
 $startTime = Get-Date
@@ -188,6 +188,7 @@ function WaitForSingleFirebirdInstance {
 WaitForSingleFirebirdInstance
 
 # Part 9 - Launch Smart Office Setup Executable
+# Part 9 - PartVersion 1.02
 # -----
 Write-Host "[Part 9] Proceeding to launch Smart Office setup executable..." -ForegroundColor Green
 
@@ -195,7 +196,13 @@ $setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object Las
 if ($setupExe) {
     Write-Host "Found setup executable: $($setupExe.FullName)" -ForegroundColor Green
     try {
+        Write-Host "Starting the setup executable..." -ForegroundColor Green
         Start-Process -FilePath $setupExe.FullName -Wait
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "The setup executable exited with code $LASTEXITCODE. Check the logs for more details." -ForegroundColor Red
+        } else {
+            Write-Host "Setup executable ran successfully." -ForegroundColor Green
+        }
     } catch {
         Write-Host "Error starting setup executable: $_" -ForegroundColor Red
         exit
@@ -204,6 +211,14 @@ if ($setupExe) {
     Write-Host "Error: Smart Office setup executable not found in '$setupDir'." -ForegroundColor Red
     exit
 }
+
+# Handle unexpected errors gracefully
+try {
+    # Additional code or operations if needed
+} catch {
+    Write-Host "Unexpected error encountered: $_" -ForegroundColor Red
+}
+
 
 # Part 10 - Wait for User Confirmation
 # -----
