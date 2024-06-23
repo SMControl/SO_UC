@@ -1,6 +1,6 @@
-Write-Host "SOUA.ps1 - Version 1.116" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.117" -ForegroundColor Green
 # ---
-# - weird renaming issues with part 9
+# - cleaned up commenting
 
 # Initialize script start time
 $startTime = Get-Date
@@ -17,6 +17,8 @@ if (-not (Test-Path $workingDir -PathType Container)) {
 }
 
 Set-Location -Path $workingDir
+
+Write-Host "[NB] Upgrades requiring reboot not yet supported." -ForegroundColor Yellow
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -44,7 +46,8 @@ foreach ($process in $processesToCheck) {
     }
 }
 
-# Part 3 - Download SO_UC.exe if Necessary and Run it.
+# Part 3 - Download SO_UC.exe if Necessary and Launching SO_UC.exe and Wait for Completion
+# Part 3 - PartVersion 1.02
 # -----
 Write-Host "[Part 3] Downloading SO_UC.exe if necessary..." -ForegroundColor Green
 $SO_UC_Path = "$workingDir\SO_UC.exe"
@@ -52,22 +55,32 @@ $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
     Write-Host "SO_UC.exe not found. Downloading..." -ForegroundColor Yellow
     try {
-        Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path
-        Write-Host "Downloaded successful." -ForegroundColor Green
+        $download = Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path -PassThru
+        Write-Host "Downloading SO_UC.exe..." -ForegroundColor Yellow
+        while ($download.IsCompleted -eq $false) {
+            Write-Host "Progress: $($download.BytesReceived / $download.TotalBytes * 100)% complete" -ForegroundColor Yellow
+            Start-Sleep -Seconds 1
+        }
+        Write-Host "SO_UC.exe downloaded successfully." -ForegroundColor Green
     } catch {
-        Write-Host "Error downloading: $_" -ForegroundColor Red
+        Write-Host "Error downloading SO_UC.exe: $_" -ForegroundColor Red
         exit
     }
 } else {
+    Write-Host "SO_UC.exe already exists in $workingDir. Skipping download." -ForegroundColor Yellow
 }
 
-# Launching SO_UC.exe
-Start-Process -FilePath $SO_UC_Path -NoNewWindow
-if ($?) {
-    Write-Host "Please allow always SO_UC.exe through Firewall." -ForegroundColor Yellow
-    Write-Host "This program obtains latest Smart Office setup." -ForegroundColor Yellow
+# Part 3.1 - Launching SO_UC.exe hidden and wait for completion
+# -----
+Write-Host "Launching SO_UC.exe..." -ForegroundColor Green
+$process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
+if ($process) {
+    Write-Host "Checking/Downloading latest version of Smart Office Installer from Stationmaster. Please wait..." -ForegroundColor Green
+    $process.WaitForExit()
+    Start-Sleep -Seconds 2
 } else {
-    Write-Host "Failed to launch SO_UC.exe." -ForegroundColor Red
+    Write-Host "Failed to start SO_UC.exe." -ForegroundColor Red
+    exit
 }
 
 # Part 4 - Check for Firebird Installation
@@ -85,6 +98,7 @@ if (-not (Test-Path $firebirdDir)) {
         exit
     }
 } else {
+    Write-Host "Firebird already installed in $firebirdDir. Skipping installation." -ForegroundColor Yellow
 }
 
 # Part 5 - Stop SMUpdates if Running
@@ -163,7 +177,6 @@ $PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | O
 
 Write-Host "PDTWiFi states logged to: $PDTWiFiStatesFilePath" -ForegroundColor Green
 
-
 # Part 8 - Check and Wait for Single Instance of Firebird.exe
 # -----
 Write-Host "[Part 8] Checking and waiting for a single instance of 'firebird.exe'..." -ForegroundColor Green
@@ -188,41 +201,29 @@ function WaitForSingleFirebirdInstance {
 WaitForSingleFirebirdInstance
 
 # Part 9 - Launch Smart Office Setup Executable
-# Part 9 - PartVersion 1.02
+# Part 9 - PartVersion 1.06
 # -----
 Write-Host "[Part 9] Proceeding to launch Smart Office setup executable..." -ForegroundColor Green
 
-$setupExe = Get-ChildItem -Path $setupDir -Filter "Setup*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$setupExe = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe" | Select-Object -First 1
 if ($setupExe) {
     Write-Host "Found setup executable: $($setupExe.FullName)" -ForegroundColor Green
     try {
-        Write-Host "Starting the setup executable..." -ForegroundColor Green
         Start-Process -FilePath $setupExe.FullName -Wait
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "The setup executable exited with code $LASTEXITCODE. Check the logs for more details." -ForegroundColor Red
-        } else {
-            Write-Host "Setup executable ran successfully." -ForegroundColor Green
-        }
     } catch {
         Write-Host "Error starting setup executable: $_" -ForegroundColor Red
         exit
     }
 } else {
-    Write-Host "Error: Smart Office setup executable not found in '$setupDir'." -ForegroundColor Red
+    Write-Host "Error: No executable (.exe) found in 'C:\winsm\SmartOffice_Installer'." -ForegroundColor Red
     exit
 }
 
-# Handle unexpected errors gracefully
-try {
-    # Additional code or operations if needed
-} catch {
-    Write-Host "Unexpected error encountered: $_" -ForegroundColor Red
-}
-
-
 # Part 10 - Wait for User Confirmation
 # -----
-Write-Host "[Part 10] When upgrade is FULLY complete, press Enter...." -ForegroundColor Yellow
+Write-Host " "
+Write-Host "[Part 10] When upgrade is FULLY complete and Smart Office is closed;" -ForegroundColor Yellow
+Write-Host "[Part 10] Press Enter to finish off Post Install tasks..." -ForegroundColor Yellow
 Read-Host
 
 # Check for Running Smart Office Processes Again
@@ -308,16 +309,9 @@ if (Test-Path $PDTWiFiStatesFilePath) {
     Write-Host "Removed temporary file: $PDTWiFiStatesFilePath" -ForegroundColor Green
 }
 
-
 # Part 15 - Clean up and Finish Script
 # -----
 Write-Host "[Part 15] Cleaning up and finishing script..." -ForegroundColor Green
-
-# Remove temporary files
-if (Test-Path $PDTWiFiStatesFilePath) {
-    Remove-Item -Path $PDTWiFiStatesFilePath -Force
-    Write-Host "Removed temporary file: $PDTWiFiStatesFilePath" -ForegroundColor Green
-}
 
 # Calculate and display script execution time
 $endTime = Get-Date
