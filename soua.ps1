@@ -1,10 +1,6 @@
-Write-Host "SOUA.ps1 - Version 1.114" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.115" -ForegroundColor Green
 # ---
-# - firebird.exe count and warnings if more than 1
-# - Improved management of PDTWiFi process states and retrieval for consistency between Part 7 and Part 14
-# - Updated error handling messages in Part 14
-# - Fixed formatting issue in error message in Part 14
-# - running souc was ommited, put that back in.
+# - cleaned up commenting
 
 # Initialize script start time
 $startTime = Get-Date
@@ -63,14 +59,13 @@ if (-not (Test-Path $SO_UC_Path)) {
         exit
     }
 } else {
-    Write-Host "Already exists. Skipping download." -ForegroundColor Green
 }
 
 # Launching SO_UC.exe
-Write-Host "Launching SO_UC.exe..." -ForegroundColor Green
 Start-Process -FilePath $SO_UC_Path -NoNewWindow
 if ($?) {
-    Write-Host "Please allow always SO_UC.exe through Firewall. [Program obtains latest Smart Office setup.]" -ForegroundColor Yellow
+    Write-Host "Please allow always SO_UC.exe through Firewall." -ForegroundColor Yellow
+    Write-Host "This program obtains latest Smart Office setup." -ForegroundColor Yellow
 } else {
     Write-Host "Failed to launch SO_UC.exe." -ForegroundColor Red
 }
@@ -90,7 +85,6 @@ if (-not (Test-Path $firebirdDir)) {
         exit
     }
 } else {
-    Write-Host "Firebird is already installed in $firebirdDir. Skipping installation." -ForegroundColor Yellow
 }
 
 # Part 5 - Stop SMUpdates if Running
@@ -230,7 +224,6 @@ foreach ($process in $processesToCheck) {
 Write-Host "[Part 11] Setting permissions for StationMaster folder..." -ForegroundColor Green
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
-    Write-Host "Permissions set for StationMaster folder." -ForegroundColor Green
 } catch {
     Write-Host "Error setting permissions for StationMaster folder: $_" -ForegroundColor Red
 }
@@ -240,7 +233,6 @@ try {
 Write-Host "[Part 12] Setting permissions for Firebird folder..." -ForegroundColor Green
 try {
     & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
-    Write-Host "Permissions set for Firebird folder." -ForegroundColor Green
 } catch {
     Write-Host "Error setting permissions for Firebird folder." -ForegroundColor Red
 }
