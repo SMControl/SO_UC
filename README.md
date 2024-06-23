@@ -7,8 +7,6 @@
 - Always do a backup first before running this script or manualy Installing/Upgrading.
 - During script SO_UC.exe will require access through the firewall to retreive the latest SO Installer exe.
 
-![Screenshot of Smart Office Upgrade Client](https://github.com/SMControl/SO_UC/raw/main/2024-06-23_1230.png)
-
 ## Requirements
 
 - Windows 7 SP1 or Windows Server 2008 R2 SP1
