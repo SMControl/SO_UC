@@ -3,10 +3,8 @@
 ## Overview
 
 - Script automates the PRE and POST upgrade tasks for SO Setup.
-- It does not install SO Automatically, it just automates some tasks.
-- Always do a backup first.
 - During script SO_UC.exe will require access through the firewall to retreive the latest SO Installer exe.
-- Does not currently support SO Installer needing a reboot.
+- Does not currently support SO Installer needing a reboot. (In this case an upgrade would be finished manually)
 
 ![](https://github.com/SMControl/SO_UC/blob/main/2024-06-24_21-29.png)
 
