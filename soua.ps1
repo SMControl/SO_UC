@@ -5,7 +5,7 @@ Write-Host "SOUA.ps1 - Version 1.118" -ForegroundColor Green
 # Initialize script start time
 $startTime = Get-Date
 
-# Set the working directory
+# Set the working directory - move to after admin check
 $workingDir = "C:\winsm"
 if (-not (Test-Path $workingDir -PathType Container)) {
     try {
