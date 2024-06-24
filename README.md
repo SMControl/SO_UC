@@ -9,7 +9,12 @@
 - Does not currently support Smart Office Installer needing a reboot.
 
 ## Task Performed
-
+1. Downloads latest Installer from SM
+2. Sets a scheduled task to check nightly, between 00:00 and 05:59, for newer setup versions.
+3. Checks Firebird; Installs with SM settings if missing.
+4. Pre and Post Upgrade deals with Firebird using programs and services.
+5. Waits for single instance of Firebird before launching the Setup.
+6. Sets folder permissions for SM & Firebird 
 
 ## Requirements
 
