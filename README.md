@@ -8,6 +8,9 @@
 - During script SO_UC.exe will require access through the firewall to retreive the latest SO Installer exe.
 - Does not currently support Smart Office Installer needing a reboot.
 
+## Task Performed
+
+
 ## Requirements
 
 - Windows 7 SP1 or Windows Server 2008 R2 SP1
