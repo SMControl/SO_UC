@@ -1,6 +1,7 @@
-Write-Host "SOUA.ps1 - Version 1.124" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.125" -ForegroundColor Green
 # ---
 # - removed un-nessecary messages
+# - have to ask for user to kill smupdates.exe as it blocks continuing and we can't catch it because so started from setup launches it.
 
 
 # Initialize script start time
@@ -201,7 +202,8 @@ Write-Host "[Part 9/15] Proceeding to launch SO setup executable" -ForegroundCol
 
 $setupExe = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe" | Select-Object -First 1
 if ($setupExe) {
-    Write-Host "Found setup executable: $($setupExe.FullName)" -ForegroundColor Green
+    Write-Host "Found setup executable: $($setupExe)" -ForegroundColor Green
+    Write-Host "Close SO & Kill SMUpdates.exe when finished." -ForegroundColor Yellow
     try {
         Start-Process -FilePath $setupExe.FullName -Wait
     } catch {
