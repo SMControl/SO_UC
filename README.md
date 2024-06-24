@@ -8,6 +8,9 @@
 - During script SO_UC.exe will require access through the firewall to retreive the latest SO Installer exe.
 - Does not currently support Smart Office Installer needing a reboot.
 
+![](https://github.com/SMControl/SO_UC/blob/main/2024-06-24_1101_1.png)
+
+
 ## Task Performed
 1. Downloads latest Installer from SM
 2. Sets a scheduled task to check nightly, between 00:00 and 05:59, for newer setup versions.
