@@ -3,7 +3,7 @@
 ## Overview
 
 - Script automates the PRE and POST upgrade tasks for SO Setup.
-- It does *NOT* install SO Automatically.
+- It does **NOT** install SO Automatically.
 - Always do a backup first.
 - During script SO_UC.exe will require access through the firewall to retreive the latest SO Installer exe.
 - Does not currently support SO Installer needing a reboot.
@@ -12,17 +12,16 @@
 
 
 ## Task Performed
-1. Downloads latest Installer from SM
-2. Sets a scheduled task to check nightly, between 00:00 and 05:59, for newer setup versions.
-3. Checks Firebird; Installs with SM settings if missing.
-4. Pre and Post Upgrade deals with Firebird using programs and services.
+1. Downloads latest Installer from SM and sets a task to check for new versions daily.
+3. Checks Firebird; Installs if missing.
+4. Deals with Firebird using programs and services PRE and POST Upgrade.
 5. Waits for single instance of Firebird before launching the Setup.
-6. Sets folder permissions for SM & Firebird 
+6. Sets folder permissions
 
 ## Requirements
 
 - Windows 7 SP1 or Windows Server 2008 R2 SP1
-- Internet access for downloading components
+- Internet access for downloading latest Installer
 
 ## Usage
 
