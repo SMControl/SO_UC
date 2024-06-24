@@ -1,6 +1,7 @@
-Write-Host "SOUA.ps1 - Version 1.118" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.119" -ForegroundColor Blue
 # ---
 # - cleaned up commenting
+# - colour change
 
 # Initialize script start time
 $startTime = Get-Date
@@ -18,12 +19,12 @@ if (-not (Test-Path $workingDir -PathType Container)) {
 
 Set-Location -Path $workingDir
 
-Write-Host "[Warning] Upgrades requiring a reboot are not yet supported." -ForegroundColor Yellow
-Write-Host "[Warning] If a Reboot is required, Post Upgrade Tasks must be checked manually." -ForegroundColor Yellow
+Write-Host "[WARNING] Upgrades requiring a reboot are not yet supported." -ForegroundColor Red
+Write-Host "[WARNING] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
 
 # Part 1 - Check for Admin Rights
 # -----
-Write-Host "[Part 1/15] System Pre-Checks..." -ForegroundColor Green
+Write-Host "[Part 1/15] System Pre-Checks..." -ForegroundColor Blue
 function Test-Admin {
     $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -37,7 +38,7 @@ if (-not (Test-Admin)) {
 
 # Part 2 - Check for Running SO Processes
 # -----
-Write-Host "[Part 2/15] Checking for running SO processes..." -ForegroundColor Green
+Write-Host "[Part 2/15] Checking processes..." -ForegroundColor Blue
 $processesToCheck = @("Sm32Main", "Sm32")
 foreach ($process in $processesToCheck) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
@@ -50,33 +51,32 @@ foreach ($process in $processesToCheck) {
 # Part 3 - Download SO_UC.exe if Necessary and Launching SO_UC.exe and Wait for Completion
 # Part 3 - PartVersion 1.02
 # -----
-Write-Host "[Part 3/15] Downloading SO_UC.exe if necessary..." -ForegroundColor Green
+Write-Host "[Part 3/15] Checking SO_UC..." -ForegroundColor Blue
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
-    Write-Host "SO_UC.exe not found. Downloading..." -ForegroundColor Yellow
+    Write-Host "Not found. Downloading..." -ForegroundColor Yellow
     try {
         $download = Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path -PassThru
-        Write-Host "Downloading SO_UC.exe..." -ForegroundColor Yellow
+        Write-Host "Downloading SO_UC..." -ForegroundColor Yellow
         while ($download.IsCompleted -eq $false) {
             Write-Host "Progress: $($download.BytesReceived / $download.TotalBytes * 100)% complete" -ForegroundColor Yellow
             Start-Sleep -Seconds 1
         }
-        Write-Host "SO_UC.exe downloaded successfully." -ForegroundColor Green
+        Write-Host "Downloaded successfully." -ForegroundColor Blue
     } catch {
-        Write-Host "Error downloading SO_UC.exe: $_" -ForegroundColor Red
+        Write-Host "Error downloading SO_UC: $_" -ForegroundColor Red
         exit
     }
 } else {
-    Write-Host "SO_UC.exe already exists in $workingDir. Skipping download." -ForegroundColor Yellow
 }
 
 # Part 3.1 - Launching SO_UC.exe hidden and wait for completion
 # -----
-Write-Host "Launching SO_UC.exe. Please allow through Firewall.." -ForegroundColor Green
+Write-Host "Launching SO_UC.exe. Please allow through Firewall..." -ForegroundColor Blue
 $process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
 if ($process) {
-    Write-Host "Checking/Downloading latest version of SO Installer from SM. Please wait..." -ForegroundColor Green
+    Write-Host "Checking/Downloading latest version of SO Installer from SM. Please wait..." -ForegroundColor Blue
     $process.WaitForExit()
     Start-Sleep -Seconds 2
 } else {
@@ -86,33 +86,31 @@ if ($process) {
 
 # Part 4 - Check for Firebird Installation
 # -----
-Write-Host "[Part 4/15] Checking for Firebird installation..." -ForegroundColor Green
+Write-Host "[Part 4/15] Checking for Firebird installation..." -ForegroundColor Blue
 $firebirdDir = "C:\Program Files (x86)\Firebird"
 $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
 if (-not (Test-Path $firebirdDir)) {
     Write-Host "Firebird not found. Installing Firebird..." -ForegroundColor Yellow
     try {
         Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
-        Write-Host "Firebird installed successfully." -ForegroundColor Green
+        Write-Host "Firebird installed successfully." -ForegroundColor Blue
     } catch {
         Write-Host "Error installing Firebird: $_" -ForegroundColor Red
         exit
     }
 } else {
-    Write-Host "Firebird already installed in $firebirdDir. Skipping installation." -ForegroundColor Yellow
 }
 
 # Part 5 - Stop SMUpdates if Running
 # -----
-Write-Host "[Part 5/15] Stopping SMUpdates if running..." -ForegroundColor Green
+Write-Host "[Part 5/15] Stopping SMUpdates if running..." -ForegroundColor Blue
 try {
     $smUpdatesProcess = Get-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
     if ($smUpdatesProcess) {
         Write-Host "Stopping SMUpdates process..." -ForegroundColor Yellow
         Stop-Process -Name "SMUpdates" -Force -ErrorAction SilentlyContinue
-        Write-Host "SMUpdates stopped successfully." -ForegroundColor Green
+        Write-Host "SMUpdates stopped successfully." -ForegroundColor Blue
     } else {
-        Write-Host "SMUpdates is not running." -ForegroundColor Yellow
     }
 } catch {
     Write-Host "Error stopping SMUpdates.exe: $_" -ForegroundColor Red
@@ -121,7 +119,7 @@ try {
 
 # Part 6 - Manage SO Live Sales Service
 # -----
-Write-Host "[Part 6/15] Managing SO Live Sales service..." -ForegroundColor Green
+Write-Host "[Part 6/15] Managing SO Live Sales service..." -ForegroundColor Blue
 $ServiceName = "srvSOLiveSales"
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 $wasRunning = $false
@@ -133,7 +131,7 @@ if ($service) {
         try {
             Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
             Set-Service -Name $ServiceName -StartupType Disabled
-            Write-Host "$ServiceName service stopped successfully and set to Disabled." -ForegroundColor Green
+            Write-Host "$ServiceName service stopped successfully and set to Disabled." -ForegroundColor Blue
         } catch {
             Write-Host "Error stopping service '$ServiceName': $_" -ForegroundColor Red
             exit
@@ -147,7 +145,7 @@ if ($service) {
 
 # Part 7 - Manage PDTWiFi Processes and Log State
 # -----
-Write-Host "[Part 7/15] Managing PDTWiFi processes..." -ForegroundColor Green
+Write-Host "[Part 7/15] Managing PDTWiFi processes..." -ForegroundColor Blue
 $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
 $PDTWiFiStates = @{}
 
@@ -157,7 +155,7 @@ foreach ($process in $PDTWiFiProcesses) {
         $PDTWiFiStates[$process] = $p.Status
         Write-Host "Stopping $process process..." -ForegroundColor Yellow
         Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
-        Write-Host "$process stopped successfully." -ForegroundColor Green
+        Write-Host "$process stopped successfully." -ForegroundColor Blue
     } else {
         Write-Host "$process process is not running." -ForegroundColor Yellow
         # If the process was not running, ensure it's reflected in the states
@@ -176,11 +174,11 @@ foreach ($process in $PDTWiFiProcesses) {
 $PDTWiFiStatesFilePath = "$workingDir\PDTWiFiStates.txt"
 $PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | Out-File -FilePath $PDTWiFiStatesFilePath
 
-Write-Host "PDTWiFi states logged to: $PDTWiFiStatesFilePath" -ForegroundColor Green
+Write-Host "PDTWiFi states logged to: $PDTWiFiStatesFilePath" -ForegroundColor Blue
 
 # Part 8 - Check and Wait for Single Instance of Firebird.exe
 # -----
-Write-Host "[Part 8/15] Checking and waiting for a single instance of 'firebird.exe'..." -ForegroundColor Green
+Write-Host "[Part 8/15] Checking and waiting for a single instance of 'firebird.exe'..." -ForegroundColor Blue
 
 $setupDir = "$workingDir\SmartOffice_Installer"
 if (-not (Test-Path $setupDir -PathType Container)) {
@@ -204,11 +202,11 @@ WaitForSingleFirebirdInstance
 # Part 9 - Launch SO Setup Executable
 # Part 9 - PartVersion 1.06
 # -----
-Write-Host "[Part 9/15] Proceeding to launch SO setup executable..." -ForegroundColor Green
+Write-Host "[Part 9/15] Proceeding to launch SO setup executable..." -ForegroundColor Blue
 
 $setupExe = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe" | Select-Object -First 1
 if ($setupExe) {
-    Write-Host "Found setup executable: $($setupExe.FullName)" -ForegroundColor Green
+    Write-Host "Found setup executable: $($setupExe.FullName)" -ForegroundColor Blue
     try {
         Start-Process -FilePath $setupExe.FullName -Wait
     } catch {
@@ -238,7 +236,7 @@ foreach ($process in $processesToCheck) {
 
 # Part 11 - Set Permissions for SM Folder
 # -----
-Write-Host "[Part 11/15] Setting permissions for SM folder..." -ForegroundColor Green
+Write-Host "[Part 11/15] Setting permissions for SM folder..." -ForegroundColor Blue
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -247,7 +245,7 @@ try {
 
 # Part 12 - Set Permissions for Firebird Folder
 # -----
-Write-Host "[Part 12/15] Setting permissions for Firebird folder..." -ForegroundColor Green
+Write-Host "[Part 12/15] Setting permissions for Firebird folder..." -ForegroundColor Blue
 try {
     & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -256,13 +254,13 @@ try {
 
 # Part 13 - Revert SO Live Sales Service
 # -----
-Write-Host "[Part 13/15] Reverting SO Live Sales service..." -ForegroundColor Green
+Write-Host "[Part 13/15] Reverting SO Live Sales service..." -ForegroundColor Blue
 if ($wasRunning) {
     try {
         Write-Host "Setting $ServiceName service back to Automatic startup..." -ForegroundColor Yellow
         Set-Service -Name $ServiceName -StartupType Automatic
         Start-Service -Name $ServiceName
-        Write-Host "$ServiceName service reverted to its previous state." -ForegroundColor Green
+        Write-Host "$ServiceName service reverted to its previous state." -ForegroundColor Blue
     } catch {
         Write-Host "Error reverting service '$ServiceName' to its previous state: $_" -ForegroundColor Red
     }
@@ -272,7 +270,7 @@ if ($wasRunning) {
 
 # Part 14 - Revert PDTWiFi Processes
 # -----
-Write-Host "[Part 14/15] Reverting PDTWiFi processes..." -ForegroundColor Green
+Write-Host "[Part 14/15] Reverting PDTWiFi processes..." -ForegroundColor Blue
 
 # Retrieve PDTWiFi states from the temporary file
 if (Test-Path $PDTWiFiStatesFilePath) {
@@ -295,7 +293,7 @@ foreach ($process in $PDTWiFiProcesses) {
         Write-Host "Starting $process process..." -ForegroundColor Yellow
         try {
             Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process" -ErrorAction SilentlyContinue
-            Write-Host "$process started successfully." -ForegroundColor Green
+            Write-Host "$process started successfully." -ForegroundColor Blue
         } catch {
             Write-Host "Error starting $process $_" -ForegroundColor Red
         }
@@ -307,16 +305,16 @@ foreach ($process in $PDTWiFiProcesses) {
 # Clean up and remove temporary file
 if (Test-Path $PDTWiFiStatesFilePath) {
     Remove-Item -Path $PDTWiFiStatesFilePath -Force
-    Write-Host "Removed temporary file: $PDTWiFiStatesFilePath" -ForegroundColor Green
+    Write-Host "Removed temporary file: $PDTWiFiStatesFilePath" -ForegroundColor Blue
 }
 
 # Part 15 - Clean up and Finish Script
 # -----
-Write-Host "[Part 15/15] Cleaning up and finishing script..." -ForegroundColor Green
+Write-Host "[Part 15/15] Cleaning up and finishing script..." -ForegroundColor Blue
 
 # Calculate and display script execution time
 $endTime = Get-Date
 $executionTime = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
-Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
+Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Blue
