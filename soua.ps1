@@ -1,7 +1,8 @@
-Write-Host "SOUA.ps1 - Version 1.126" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.127" -ForegroundColor Green
 # ---
 # - removed un-nessecary messages
 # - have to ask for user to kill smupdates.exe as it blocks continuing and we can't catch it because so started from setup launches it.
+# - solution to smupdates nightmare, function start in part 5 kills it every 2 seconds until part 10. nightmare.
 
 
 # Initialize script start time
@@ -102,18 +103,21 @@ if (-not (Test-Path $firebirdDir)) {
 # Part 5 - Stop SMUpdates if Running
 # -----
 Write-Host "[Part 5/15] Stopping SMUpdates if running" -ForegroundColor Cyan
-try {
-    $smUpdatesProcess = Get-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
-    if ($smUpdatesProcess) {
-        Write-Host "Stopping SMUpdates process..." -ForegroundColor Yellow
-        Stop-Process -Name "SMUpdates" -Force -ErrorAction SilentlyContinue
-        Write-Host "SMUpdates stopped successfully." -ForegroundColor Green
-    } else {
+$monitorJob = Start-Job -ScriptBlock {
+    function Monitor-SmUpdates {
+        while ($true) {
+            $smUpdatesProcess = Get-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
+            if ($smUpdatesProcess) {
+                Stop-Process -Name "SMUpdates" -Force -ErrorAction SilentlyContinue
+            }
+            Start-Sleep -Seconds 2
+        }
     }
-} catch {
-    Write-Host "Error stopping SMUpdates.exe: $_" -ForegroundColor Red
-    exit
+    
+    # Start monitoring
+    Monitor-SmUpdates
 }
+
 
 # Part 6 - Manage SO Live Sales Service
 # -----
@@ -203,7 +207,7 @@ Write-Host "[Part 9/15] Proceeding to launch SO setup executable" -ForegroundCol
 $setupExe = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe" | Select-Object -First 1
 if ($setupExe) {
     Write-Host "Found setup executable: $($setupExe)" -ForegroundColor Green
-    Write-Host "Close SO & Kill SMUpdates.exe when finished." -ForegroundColor Magenta
+    #Write-Host "Close SO & Kill SMUpdates.exe when finished." -ForegroundColor Magenta
     try {
         Start-Process -FilePath $setupExe.FullName -Wait
     } catch {
@@ -217,6 +221,10 @@ if ($setupExe) {
 
 # Part 10 - Wait for User Confirmation
 # -----
+# stop smupdates killer
+Stop-Job -Job $monitorJob
+Remove-Job -Job $monitorJob
+
 Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
 Write-Host " "
 Write-Host "    When upgrade is FULLY complete and SO is closed;" -ForegroundColor Magenta
