@@ -6,7 +6,7 @@
 - It does *NOT* install SO Automatically.
 - Always do a backup first before running this script or manualy Installing/Upgrading.
 - During script SO_UC.exe will require access through the firewall to retreive the latest SO Installer exe.
-- Does not currently support Smart Office Installer needing a reboot.
+- Does not currently support SO Installer needing a reboot.
 
 ![](https://github.com/SMControl/SO_UC/blob/main/2024-06-24_1101_1.png)
 
