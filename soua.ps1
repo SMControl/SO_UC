@@ -1,8 +1,9 @@
-Write-Host "SOUA.ps1 - Version 1.122" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.123" -ForegroundColor Green
 # ---
 # - removed un-nessecary messages
 # - colour change
 # - typos
+# - spacing
 
 # Initialize script start time
 $startTime = Get-Date
@@ -25,7 +26,7 @@ Write-Host "[WARNING] If a Reboot is required, Post Upgrade Tasks must be perfor
 
 # Part 1 - Check for Admin Rights
 # -----
-Write-Host "[Part 1/15] System Pre-Checks..." -ForegroundColor Cyan
+Write-Host "[Part 1/15] System Pre-Checks" -ForegroundColor Cyan
 function Test-Admin {
     $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -39,7 +40,7 @@ if (-not (Test-Admin)) {
 
 # Part 2 - Check for Running SO Processes
 # -----
-Write-Host "[Part 2/15] Checking processes..." -ForegroundColor Cyan
+Write-Host "[Part 2/15] Checking processes" -ForegroundColor Cyan
 $processesToCheck = @("Sm32Main", "Sm32")
 foreach ($process in $processesToCheck) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
@@ -52,7 +53,7 @@ foreach ($process in $processesToCheck) {
 # Part 3 - Download SO_UC.exe if Necessary and Launching SO_UC.exe and Wait for Completion
 # Part 3 - PartVersion 1.02
 # -----
-Write-Host "[Part 3/15] Checking SO_UC..." -ForegroundColor Cyan
+Write-Host "[Part 3/15] Checking SO_UC" -ForegroundColor Cyan
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
 if (-not (Test-Path $SO_UC_Path)) {
@@ -74,7 +75,7 @@ if (-not (Test-Path $SO_UC_Path)) {
 
 # Part 3.1 - Launching SO_UC.exe hidden and wait for completion
 # -----
-Write-Host "Launching SO_UC.exe. Please allow through Firewall..." -ForegroundColor Green
+Write-Host "Launching SO_UC.exe. Please allow through Firewall" -ForegroundColor Green
 $process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
 if ($process) {
     Write-Host "Checking/Downloading latest version of SO Installer from SM. Please wait..." -ForegroundColor Green
@@ -87,7 +88,7 @@ if ($process) {
 
 # Part 4 - Check for Firebird Installation
 # -----
-Write-Host "[Part 4/15] Checking for Firebird installation..." -ForegroundColor Cyan
+Write-Host "[Part 4/15] Checking for Firebird installation" -ForegroundColor Cyan
 $firebirdDir = "C:\Program Files (x86)\Firebird"
 $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
 if (-not (Test-Path $firebirdDir)) {
@@ -104,7 +105,7 @@ if (-not (Test-Path $firebirdDir)) {
 
 # Part 5 - Stop SMUpdates if Running
 # -----
-Write-Host "[Part 5/15] Stopping SMUpdates if running..." -ForegroundColor Cyan
+Write-Host "[Part 5/15] Stopping SMUpdates if running" -ForegroundColor Cyan
 try {
     $smUpdatesProcess = Get-Process -Name "SMUpdates" -ErrorAction SilentlyContinue
     if ($smUpdatesProcess) {
@@ -120,7 +121,7 @@ try {
 
 # Part 6 - Manage SO Live Sales Service
 # -----
-Write-Host "[Part 6/15] Managing SO Live Sales service..." -ForegroundColor Cyan
+Write-Host "[Part 6/15] Managing SO Live Sales service" -ForegroundColor Cyan
 $ServiceName = "srvSOLiveSales"
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 $wasRunning = $false
@@ -146,7 +147,7 @@ if ($service) {
 
 # Part 7 - Manage PDTWiFi Processes and Log State
 # -----
-Write-Host "[Part 7/15] Managing PDTWiFi processes..." -ForegroundColor Cyan
+Write-Host "[Part 7/15] Managing PDTWiFi processes" -ForegroundColor Cyan
 $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
 $PDTWiFiStates = @{}
 
@@ -177,7 +178,7 @@ $PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | O
 
 # Part 8 - Check and Wait for Single Instance of Firebird.exe
 # -----
-Write-Host "[Part 8/15] Checking and waiting for a single instance of 'firebird.exe'..." -ForegroundColor Cyan
+Write-Host "[Part 8/15] Checking and waiting for a single instance of Firebird" -ForegroundColor Cyan
 
 $setupDir = "$workingDir\SmartOffice_Installer"
 if (-not (Test-Path $setupDir -PathType Container)) {
@@ -201,7 +202,7 @@ WaitForSingleFirebirdInstance
 # Part 9 - Launch SO Setup Executable
 # Part 9 - PartVersion 1.06
 # -----
-Write-Host "[Part 9/15] Proceeding to launch SO setup executable..." -ForegroundColor Cyan
+Write-Host "[Part 9/15] Proceeding to launch SO setup executable" -ForegroundColor Cyan
 
 $setupExe = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe" | Select-Object -First 1
 if ($setupExe) {
@@ -219,8 +220,8 @@ if ($setupExe) {
 
 # Part 10 - Wait for User Confirmation
 # -----
-Write-Host " "
 Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
+Write-Host " "
 Write-Host "    When upgrade is FULLY complete and SO is closed;" -ForegroundColor Magenta
 Write-Host "    Press Enter to finish off Post Install tasks..." -ForegroundColor Magenta
 Read-Host
@@ -236,7 +237,7 @@ foreach ($process in $processesToCheck) {
 
 # Part 11 - Set Permissions for SM Folder
 # -----
-Write-Host "[Part 11/15] Setting permissions for SM folder..." -ForegroundColor Cyan
+Write-Host "[Part 11/15] Setting permissions for SM folder" -ForegroundColor Cyan
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -245,7 +246,7 @@ try {
 
 # Part 12 - Set Permissions for Firebird Folder
 # -----
-Write-Host "[Part 12/15] Setting permissions for Firebird folder..." -ForegroundColor Cyan
+Write-Host "[Part 12/15] Setting permissions for Firebird folder" -ForegroundColor Cyan
 try {
     & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -254,7 +255,7 @@ try {
 
 # Part 13 - Revert SO Live Sales Service
 # -----
-Write-Host "[Part 13/15] Reverting SO Live Sales service..." -ForegroundColor Cyan
+Write-Host "[Part 13/15] Reverting SO Live Sales service" -ForegroundColor Cyan
 if ($wasRunning) {
     try {
         Write-Host "Setting $ServiceName service back to Automatic startup..." -ForegroundColor Yellow
@@ -270,7 +271,7 @@ if ($wasRunning) {
 
 # Part 14 - Revert PDTWiFi Processes
 # -----
-Write-Host "[Part 14/15] Reverting PDTWiFi processes..." -ForegroundColor Cyan
+Write-Host "[Part 14/15] Reverting PDTWiFi processes" -ForegroundColor Cyan
 
 # Retrieve PDTWiFi states from the temporary file
 if (Test-Path $PDTWiFiStatesFilePath) {
@@ -309,7 +310,7 @@ if (Test-Path $PDTWiFiStatesFilePath) {
 
 # Part 15 - Clean up and Finish Script
 # -----
-Write-Host "[Part 15/15] Cleaning up and finishing script..." -ForegroundColor Cyan
+Write-Host "[Part 15/15] Cleaning up and finishing script" -ForegroundColor Cyan
 
 # Calculate and display script execution time
 $endTime = Get-Date
