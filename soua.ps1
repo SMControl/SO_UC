@@ -1,7 +1,8 @@
-Write-Host "SOUA.ps1 - Version 1.120" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.121" -ForegroundColor Green
 # ---
 # - cleaned up commenting
 # - colour change
+# - typos
 
 # Initialize script start time
 $startTime = Get-Date
@@ -305,7 +306,6 @@ foreach ($process in $PDTWiFiProcesses) {
 # Clean up and remove temporary file
 if (Test-Path $PDTWiFiStatesFilePath) {
     Remove-Item -Path $PDTWiFiStatesFilePath -Force
-    Write-Host "Removed temporary file: $PDTWiFiStatesFilePath" -ForegroundColor Green
 }
 
 # Part 15 - Clean up and Finish Script
@@ -317,4 +317,6 @@ $endTime = Get-Date
 $executionTime = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
+Write-Host " "
 Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
+Write-Host " "
