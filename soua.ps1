@@ -1,6 +1,6 @@
-Write-Host "SOUA.ps1 - Version 1.121" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.122" -ForegroundColor Green
 # ---
-# - cleaned up commenting
+# - removed un-nessecary messages
 # - colour change
 # - typos
 
@@ -175,8 +175,6 @@ foreach ($process in $PDTWiFiProcesses) {
 $PDTWiFiStatesFilePath = "$workingDir\PDTWiFiStates.txt"
 $PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | Out-File -FilePath $PDTWiFiStatesFilePath
 
-Write-Host "PDTWiFi states logged to: $PDTWiFiStatesFilePath" -ForegroundColor Green
-
 # Part 8 - Check and Wait for Single Instance of Firebird.exe
 # -----
 Write-Host "[Part 8/15] Checking and waiting for a single instance of 'firebird.exe'..." -ForegroundColor Cyan
@@ -222,8 +220,9 @@ if ($setupExe) {
 # Part 10 - Wait for User Confirmation
 # -----
 Write-Host " "
-Write-Host "[Part 10/15] When upgrade is FULLY complete and SO is closed;" -ForegroundColor Magenta
-Write-Host "[Part 10/15] Press Enter to finish off Post Install tasks..." -ForegroundColor Magenta
+Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
+Write-Host "    When upgrade is FULLY complete and SO is closed;" -ForegroundColor Magenta
+Write-Host "    Press Enter to finish off Post Install tasks..." -ForegroundColor Magenta
 Read-Host
 
 # Check for Running SO Processes Again
