@@ -1,9 +1,7 @@
-Write-Host "SOUA.ps1 - Version 1.123" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.124" -ForegroundColor Green
 # ---
 # - removed un-nessecary messages
-# - colour change
-# - typos
-# - spacing
+
 
 # Initialize script start time
 $startTime = Get-Date
@@ -60,12 +58,9 @@ if (-not (Test-Path $SO_UC_Path)) {
     Write-Host "Not found. Downloading..." -ForegroundColor Yellow
     try {
         $download = Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path -PassThru
-        Write-Host "Downloading SO_UC..." -ForegroundColor Yellow
         while ($download.IsCompleted -eq $false) {
-            Write-Host "Progress: $($download.BytesReceived / $download.TotalBytes * 100)% complete" -ForegroundColor Yellow
             Start-Sleep -Seconds 1
         }
-        Write-Host "Downloaded successfully." -ForegroundColor Green
     } catch {
         Write-Host "Error downloading SO_UC: $_" -ForegroundColor Red
         exit
@@ -78,7 +73,7 @@ if (-not (Test-Path $SO_UC_Path)) {
 Write-Host "Launching SO_UC.exe. Please allow through Firewall" -ForegroundColor Green
 $process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
 if ($process) {
-    Write-Host "Checking/Downloading latest version of SO Installer from SM. Please wait..." -ForegroundColor Green
+    Write-Host "Checking we have latest version of Installer. Please wait..." -ForegroundColor Green
     $process.WaitForExit()
     Start-Sleep -Seconds 2
 } else {
