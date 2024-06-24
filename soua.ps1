@@ -73,7 +73,7 @@ if (-not (Test-Path $SO_UC_Path)) {
 
 # Part 3.1 - Launching SO_UC.exe hidden and wait for completion
 # -----
-Write-Host "Launching SO_UC.exe..." -ForegroundColor Green
+Write-Host "Launching SO_UC.exe. Please allow through Firewall.." -ForegroundColor Green
 $process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
 if ($process) {
     Write-Host "Checking/Downloading latest version of SO Installer from SM. Please wait..." -ForegroundColor Green
