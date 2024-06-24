@@ -8,7 +8,7 @@
 - During script SO_UC.exe will require access through the firewall to retreive the latest SO Installer exe.
 - Does not currently support SO Installer needing a reboot.
 
-![](https://github.com/SMControl/SO_UC/blob/main/2024-06-24_1101_1.png)
+![](https://github.com/SMControl/SO_UC/blob/main/2024-06-24_21-29.png)
 
 
 ## Task Performed
