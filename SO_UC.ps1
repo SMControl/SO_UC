@@ -1,7 +1,7 @@
-# SO_UC.ps1 - Version 1.01
+# SO_UC.ps1 - Version 1.02
 # ---
-# fixed waiting for download to complete
-
+# - fixed waiting for download to complete
+# - added sleep after file download and filename to make sure filesystem has time for files to settle and rename
 ################################
 # Part 1 - Check if scheduled task exists and create if it doesn't
 ################################
@@ -82,6 +82,7 @@ if ($downloadLink) {
     # Download the file if no matching size file is found
     if (-not $fileExists) {
         Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath; if ($LASTEXITCODE -eq 0) { Write-Host "Download completed successfully." -ForegroundColor Green } else { Write-Host "Download failed." -ForegroundColor Red; exit 1 }
+        Start-Sleep 2
 
     }
     # Add timestamp to the downloaded file
@@ -91,6 +92,8 @@ if ($downloadLink) {
         $newFileName = "${originalFilenameWithoutExtension}_${timestamp}${extension}"
         $newFilePath = Join-Path -Path $downloadDirectory -ChildPath $newFileName
         Rename-Item -Path $destinationPath -NewName $newFileName
+        Start-Sleep 2
+
 
 }
 
