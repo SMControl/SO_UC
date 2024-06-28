@@ -1,3 +1,7 @@
+# SO_UC.ps1 - Version 1.01
+# ---
+# fixed waiting for download to complete
+
 ################################
 # Part 1 - Check if scheduled task exists and create if it doesn't
 ################################
@@ -77,7 +81,8 @@ if ($downloadLink) {
 
     # Download the file if no matching size file is found
     if (-not $fileExists) {
-        Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath
+        Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath; if ($LASTEXITCODE -eq 0) { Write-Host "Download completed successfully." -ForegroundColor Green } else { Write-Host "Download failed." -ForegroundColor Red; exit 1 }
+
     }
     # Add timestamp to the downloaded file
         $timestamp = Get-Date -Format "yyyy-MM-dd_HHmm"
