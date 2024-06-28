@@ -1,7 +1,8 @@
-# SO_UC.ps1 - Version 1.02
+# SO_UC.ps1 - Version 1.03
 # ---
 # - fixed waiting for download to complete
 # - added sleep after file download and filename to make sure filesystem has time for files to settle and rename
+# - disabled timestamping file as it doesn't work
 ################################
 # Part 1 - Check if scheduled task exists and create if it doesn't
 ################################
@@ -85,16 +86,13 @@ if ($downloadLink) {
         Start-Sleep 2
 
     }
-    # Add timestamp to the downloaded file
-        $timestamp = Get-Date -Format "yyyy-MM-dd_HHmm"
-        $originalFilenameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($originalFilename)
-        $extension = [System.IO.Path]::GetExtension($originalFilename)
-        $newFileName = "${originalFilenameWithoutExtension}_${timestamp}${extension}"
-        $newFilePath = Join-Path -Path $downloadDirectory -ChildPath $newFileName
-        Rename-Item -Path $destinationPath -NewName $newFileName
-        Start-Sleep 2
-
-
+    # Add timestamp to the downloaded file [DISABLED]
+    # $timestamp = Get-Date -Format "yyyy-MM-dd_HHmm"
+    # $originalFilenameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($originalFilename)
+    # $extension = [System.IO.Path]::GetExtension($originalFilename)
+    # $newFileName = "${originalFilenameWithoutExtension}_${timestamp}${extension}"
+    # $newFilePath = Join-Path -Path $downloadDirectory -ChildPath $newFileName
+    # Rename-Item -Path $destinationPath -NewName $newFileName
 }
 
 ################################
