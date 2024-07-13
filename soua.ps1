@@ -1,14 +1,13 @@
-Write-Host "SOUA.ps1 - Version 1.127" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.129" -ForegroundColor Green
 # ---
-# - removed un-nessecary messages
-# - have to ask for user to kill smupdates.exe as it blocks continuing and we can't catch it because so started from setup launches it.
-# - solution to smupdates nightmare, function start in part 5 kills it every 2 seconds until part 10. nightmare.
-
+# - solution for smupdates, function in part 5 kills it every 2 seconds until part 10.
+# - upgrade complete ok box
+# - cleaned up firebird installation sometimes succeding but saying it failed and then quitting overall script
 
 # Initialize script start time
 $startTime = Get-Date
 
-# Set the working directory - move to after admin check
+# Set the working directory
 $workingDir = "C:\winsm"
 if (-not (Test-Path $workingDir -PathType Container)) {
     try {
@@ -50,32 +49,32 @@ foreach ($process in $processesToCheck) {
     }
 }
 
-# Part 3 - Download SO_UC.exe if Necessary and Launching SO_UC.exe and Wait for Completion
-# Part 3 - PartVersion 1.02
+# Part 3 - Download SO_UC.exe
 # -----
 Write-Host "[Part 3/15] Checking SO_UC" -ForegroundColor Cyan
 $SO_UC_Path = "$workingDir\SO_UC.exe"
 $SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
+
 if (-not (Test-Path $SO_UC_Path)) {
     Write-Host "Not found. Downloading..." -ForegroundColor Yellow
     try {
-        $download = Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path -PassThru
-        while ($download.IsCompleted -eq $false) {
-            Start-Sleep -Seconds 1
-        }
+        Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path -ErrorAction Stop
+        Write-Host "Download complete." -ForegroundColor Green
     } catch {
         Write-Host "Error downloading SO_UC: $_" -ForegroundColor Red
         exit
     }
 } else {
+    Write-Host "SO_UC.exe already exists." -ForegroundColor Green
 }
 
-# Part 3.1 - Launching SO_UC.exe hidden and wait for completion
-# -----
+
+
+# Launch SO_UC.exe hidden and wait for completion
 Write-Host "Launching SO_UC.exe. Please allow through Firewall" -ForegroundColor Green
 $process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
 if ($process) {
-    Write-Host "Checking we have latest version of Installer. Please wait..." -ForegroundColor Green
+    Write-Host "Checking for latest version of Installer. Please wait..." -ForegroundColor Green
     $process.WaitForExit()
     Start-Sleep -Seconds 2
 } else {
@@ -88,17 +87,21 @@ if ($process) {
 Write-Host "[Part 4/15] Checking for Firebird installation" -ForegroundColor Cyan
 $firebirdDir = "C:\Program Files (x86)\Firebird"
 $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
+
 if (-not (Test-Path $firebirdDir)) {
     Write-Host "Firebird not found. Installing Firebird..." -ForegroundColor Yellow
     try {
-        Invoke-Expression -Command (irm $firebirdInstallerURL | iex)
+        # Start a new PowerShell process to run the installer
+        Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"irm $firebirdInstallerURL | iex`"" -Wait
         Write-Host "Firebird installed successfully." -ForegroundColor Green
     } catch {
         Write-Host "Error installing Firebird: $_" -ForegroundColor Red
         exit
     }
 } else {
+    Write-Host "Firebird is already installed." -ForegroundColor Green
 }
+
 
 # Part 5 - Stop SMUpdates if Running
 # -----
@@ -114,10 +117,8 @@ $monitorJob = Start-Job -ScriptBlock {
         }
     }
     
-    # Start monitoring
     Monitor-SmUpdates
 }
-
 
 # Part 6 - Manage SO Live Sales Service
 # -----
@@ -133,7 +134,7 @@ if ($service) {
         try {
             Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
             Set-Service -Name $ServiceName -StartupType Disabled
-            Write-Host "$ServiceName service stopped successfully and set to Disabled." -ForegroundColor Green
+            Write-Host "$ServiceName service stopped and set to Disabled." -ForegroundColor Green
         } catch {
             Write-Host "Error stopping service '$ServiceName': $_" -ForegroundColor Red
             exit
@@ -145,7 +146,7 @@ if ($service) {
     Write-Host "$ServiceName service not found." -ForegroundColor Yellow
 }
 
-# Part 7 - Manage PDTWiFi Processes and Log State
+# Part 7 - Manage PDTWiFi Processes
 # -----
 Write-Host "[Part 7/15] Managing PDTWiFi processes" -ForegroundColor Cyan
 $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
@@ -160,15 +161,7 @@ foreach ($process in $PDTWiFiProcesses) {
         Write-Host "$process stopped successfully." -ForegroundColor Green
     } else {
         Write-Host "$process process is not running." -ForegroundColor Yellow
-        # If the process was not running, ensure it's reflected in the states
         $PDTWiFiStates[$process] = "Not running"
-    }
-}
-
-# Check again and update states for processes that were running before stopping
-foreach ($process in $PDTWiFiProcesses) {
-    if ($PDTWiFiStates[$process] -eq $null) {
-        $PDTWiFiStates[$process] = "Running"
     }
 }
 
@@ -176,7 +169,7 @@ foreach ($process in $PDTWiFiProcesses) {
 $PDTWiFiStatesFilePath = "$workingDir\PDTWiFiStates.txt"
 $PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | Out-File -FilePath $PDTWiFiStatesFilePath
 
-# Part 8 - Check and Wait for Single Instance of Firebird.exe
+# Part 8 - Wait for Single Instance of Firebird.exe
 # -----
 Write-Host "[Part 8/15] Checking and waiting for a single instance of Firebird" -ForegroundColor Cyan
 
@@ -189,25 +182,22 @@ if (-not (Test-Path $setupDir -PathType Container)) {
 function WaitForSingleFirebirdInstance {
     $firebirdProcesses = Get-Process -Name "firebird" -ErrorAction SilentlyContinue
     while ($firebirdProcesses.Count -gt 1) {
-        Write-Host "Warning: Multiple instances of 'firebird.exe' are running. Please ensure only one instance is running." -ForegroundColor Yellow
+        Write-Host "Warning: Multiple instances of 'firebird.exe' are running." -ForegroundColor Yellow
         Write-Host "Currently running instances: $($firebirdProcesses.Count)" -ForegroundColor Yellow
         Start-Sleep -Seconds 1
         $firebirdProcesses = Get-Process -Name "firebird" -ErrorAction SilentlyContinue
     }
 }
 
-# Call function to wait for a single instance of Firebird
 WaitForSingleFirebirdInstance
 
 # Part 9 - Launch SO Setup Executable
-# Part 9 - PartVersion 1.06
 # -----
-Write-Host "[Part 9/15] Proceeding to launch SO setup executable" -ForegroundColor Cyan
+Write-Host "[Part 9/15] Launching SO setup executable" -ForegroundColor Cyan
 
 $setupExe = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe" | Select-Object -First 1
 if ($setupExe) {
     Write-Host "Found setup executable: $($setupExe)" -ForegroundColor Green
-    #Write-Host "Close SO & Kill SMUpdates.exe when finished." -ForegroundColor Magenta
     try {
         Start-Process -FilePath $setupExe.FullName -Wait
     } catch {
@@ -221,24 +211,23 @@ if ($setupExe) {
 
 # Part 10 - Wait for User Confirmation
 # -----
-# stop smupdates killer
+Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
+# Stop monitoring SMUpdates process
 Stop-Job -Job $monitorJob
 Remove-Job -Job $monitorJob
-
-Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
-Write-Host " "
-Write-Host "    When upgrade is FULLY complete and SO is closed;" -ForegroundColor Magenta
-Write-Host "    Press Enter to finish off Post Install tasks..." -ForegroundColor Magenta
-Read-Host
+Write-Host "Waiting for confirmation Upgrade is fully complete and SO is closed." -ForegroundColor Yellow
+Add-Type -AssemblyName System.Windows.Forms
+[System.Windows.Forms.MessageBox]::Show("ONLY when the upgrade is FULLY complete and SO is closed.`n`nClick OK to complete Post Install tasks.", "SO Post Upgrade Confirmation", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
 # Check for Running SO Processes Again
-$processesToCheck = @("Sm32Main", "Sm32")
 foreach ($process in $processesToCheck) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
         Write-Host "SO is still running. Please close it and press Enter to continue..." -ForegroundColor Red
         Read-Host
     }
 }
+
+
 
 # Part 11 - Set Permissions for SM Folder
 # -----
@@ -268,7 +257,7 @@ if ($wasRunning) {
         Start-Service -Name $ServiceName
         Write-Host "$ServiceName service reverted to its previous state." -ForegroundColor Green
     } catch {
-        Write-Host "Error reverting service '$ServiceName' to its previous state: $_" -ForegroundColor Red
+        Write-Host "Error reverting service '$ServiceName': $_" -ForegroundColor Red
     }
 } else {
     Write-Host "$ServiceName service was not running before, so no action needed." -ForegroundColor Yellow
@@ -278,7 +267,6 @@ if ($wasRunning) {
 # -----
 Write-Host "[Part 14/15] Reverting PDTWiFi processes" -ForegroundColor Cyan
 
-# Retrieve PDTWiFi states from the temporary file
 if (Test-Path $PDTWiFiStatesFilePath) {
     $storedStates = Get-Content -Path $PDTWiFiStatesFilePath | ForEach-Object {
         $parts = $_ -split ":"
@@ -308,7 +296,7 @@ foreach ($process in $PDTWiFiProcesses) {
     }
 }
 
-# Clean up and remove temporary file
+# Clean up temporary file
 if (Test-Path $PDTWiFiStatesFilePath) {
     Remove-Item -Path $PDTWiFiStatesFilePath -Force
 }
