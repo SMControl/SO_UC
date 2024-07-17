@@ -1,12 +1,13 @@
-# SO_UC.ps1 - Version 1.03
-# ---
-# - fixed waiting for download to complete
-# - added sleep after file download and filename to make sure filesystem has time for files to settle and rename
-# - disabled timestamping file as it doesn't work
-################################
-# Part 1 - Check if scheduled task exists and create if it doesn't
-################################
+Write-Host "SO_UC.ps1 - ScriptVersion 1.04" ForegroundColor Green
+# -----
+# - Initial check for scheduled task
+# - Fetch and filter .exe links
+# - Download and manage the latest Setup.exe
+# - Cleanup older downloads
 
+# Part 1 - Check if scheduled task exists and create if it doesn't
+# PartVersion 1.00
+# -----
 # Check if the scheduled task exists
 $taskExists = Get-ScheduledTask -TaskName "SO InstallerUpdates" -ErrorAction SilentlyContinue
 
@@ -27,19 +28,17 @@ if (-not $taskExists) {
     Register-ScheduledTask -TaskName "SO InstallerUpdates" -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest
 }
 
-################################
 # Part 2 - Retrieve .exe links from the webpage
-################################
-
+# PartVersion 1.00
+# -----
 # Retrieve .exe links from the webpage
-$exeLinks = (Invoke-WebRequest -Uri "http://www.stationmaster.com/downloads/").Links | Where-Object { $_.href -match "\.exe$" } | ForEach-Object { $_.href }
+$exeLinks = (Invoke-WebRequest -Uri "https://www.stationmaster.com/downloads/").Links | Where-Object { $_.href -match "\.exe$" } | ForEach-Object { $_.href }
 
-################################
 # Part 3 - Filter for the highest version of Setup.exe
-################################
-
+# PartVersion 1.00
+# -----
 # Filter for the highest version of Setup.exe
-$setupLinks = $exeLinks | Where-Object { $_ -match "^http://www\.stationmaster\.com/Download/Setup\d+\.exe$" }
+$setupLinks = $exeLinks | Where-Object { $_ -match "^https://www\.stationmaster\.com/Download/Setup\d+\.exe$" }
 
 $highestVersion = 0
 $downloadLink = $null
@@ -52,10 +51,9 @@ foreach ($link in $setupLinks) {
     }
 }
 
-################################
 # Part 4 - check size and only download if different + timestamp
-################################
-
+# PartVersion 1.00
+# -----
 if ($downloadLink) {
     # Get the size of the file at the download link
     $request = [System.Net.HttpWebRequest]::Create($downloadLink)
@@ -82,23 +80,20 @@ if ($downloadLink) {
 
     # Download the file if no matching size file is found
     if (-not $fileExists) {
-        Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath; if ($LASTEXITCODE -eq 0) { Write-Host "Download completed successfully." -ForegroundColor Green } else { Write-Host "Download failed." -ForegroundColor Red; exit 1 }
-        Start-Sleep 2
-
+        Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath
     }
-    # Add timestamp to the downloaded file [DISABLED]
-    # $timestamp = Get-Date -Format "yyyy-MM-dd_HHmm"
-    # $originalFilenameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($originalFilename)
-    # $extension = [System.IO.Path]::GetExtension($originalFilename)
-    # $newFileName = "${originalFilenameWithoutExtension}_${timestamp}${extension}"
-    # $newFilePath = Join-Path -Path $downloadDirectory -ChildPath $newFileName
-    # Rename-Item -Path $destinationPath -NewName $newFileName
+    # Add timestamp to the downloaded file
+    $timestamp = Get-Date -Format "yyyy-MM-dd_HHmm"
+    $originalFilenameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($originalFilename)
+    $extension = [System.IO.Path]::GetExtension($originalFilename)
+    $newFileName = "${originalFilenameWithoutExtension}_${timestamp}${extension}"
+    $newFilePath = Join-Path -Path $downloadDirectory -ChildPath $newFileName
+    Rename-Item -Path $destinationPath -NewName $newFileName
 }
 
-################################
 # Part 5 - delete older downloads
-################################
-
+# PartVersion 1.00
+# -----
 $downloadedFiles = Get-ChildItem -Path $downloadDirectory -Filter "*.exe" | Sort-Object LastWriteTime -Descending
 if ($downloadedFiles.Count -gt 1) {
     $filesToDelete = $downloadedFiles | Select-Object -Skip 1
