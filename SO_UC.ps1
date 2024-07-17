@@ -1,4 +1,4 @@
-Write-Host "SO_UC.ps1 - ScriptVersion 1.04"
+Write-Host "SO_UC.ps1 - Version 1.04"
 # -----
 # - Initial check for scheduled task
 # - Fetch and filter .exe links
