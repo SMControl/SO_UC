@@ -1,4 +1,6 @@
-Write-Host "SOUA.ps1 - Version 1.129" -ForegroundColor Green
+Write-Host "SOUA_TEST.ps1 - Version 1.129" -ForegroundColor Green
+Write-Host " "
+Write-Host " TEST VERSION"
 # ---
 # - solution for smupdates, function in part 5 kills it every 2 seconds until part 10.
 # - upgrade complete ok box
