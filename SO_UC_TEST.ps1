@@ -1,9 +1,8 @@
-Write-Host "SO_UC.ps1 - Version 1.04"
+Write-Host "SO_UC_TEST.ps1 - Version 1.04"
+Write-Host " "
+Write-Host "TEST VERSION"
 # -----
-# - Initial check for scheduled task
-# - Fetch and filter .exe links
-# - Download and manage the latest Setup.exe
-# - Cleanup older downloads
+# - Initial test version copied over
 
 # Part 1 - Check if scheduled task exists and create if it doesn't
 # PartVersion 1.00
