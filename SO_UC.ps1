@@ -32,13 +32,13 @@ if (-not $taskExists) {
 # PartVersion 1.00
 # -----
 # Retrieve .exe links from the webpage
-$exeLinks = (Invoke-WebRequest -Uri "http://www.stationmaster.com/downloads/").Links | Where-Object { $_.href -match "\.exe$" } | ForEach-Object { $_.href }
+$exeLinks = (Invoke-WebRequest -Uri "https://www.stationmaster.com/downloads/").Links | Where-Object { $_.href -match "\.exe$" } | ForEach-Object { $_.href }
 
 # Part 3 - Filter for the highest version of Setup.exe
 # PartVersion 1.00
 # -----
 # Filter for the highest version of Setup.exe
-$setupLinks = $exeLinks | Where-Object { $_ -match "^http://www\.stationmaster\.com/Download/Setup\d+\.exe$" }
+$setupLinks = $exeLinks | Where-Object { $_ -match "^https://www\.stationmaster\.com/Download/Setup\d+\.exe$" }
 
 $highestVersion = 0
 $downloadLink = $null
