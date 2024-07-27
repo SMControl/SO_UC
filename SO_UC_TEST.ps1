@@ -1,8 +1,6 @@
-Write-Host "SO_UC_TEST.ps1 - Version 1.04"
-Write-Host " "
-Write-Host "TEST VERSION"
+Write-Host "SO_UC_TEST.ps1 - Version 1.05"
 # -----
-# - Initial test version copied over
+# - Download progress, speed and eta
 
 # Part 1 - Check if scheduled task exists and create if it doesn't
 # PartVersion 1.00
@@ -31,13 +29,13 @@ if (-not $taskExists) {
 # PartVersion 1.00
 # -----
 # Retrieve .exe links from the webpage
-$exeLinks = (Invoke-WebRequest -Uri "http://www.stationmaster.com/downloads/").Links | Where-Object { $_.href -match "\.exe$" } | ForEach-Object { $_.href }
+$exeLinks = (Invoke-WebRequest -Uri "https://www.stationmaster.com/downloads/").Links | Where-Object { $_.href -match "\.exe$" } | ForEach-Object { $_.href }
 
 # Part 3 - Filter for the highest version of Setup.exe
 # PartVersion 1.00
 # -----
 # Filter for the highest version of Setup.exe
-$setupLinks = $exeLinks | Where-Object { $_ -match "^http://www\.stationmaster\.com/Download/Setup\d+\.exe$" }
+$setupLinks = $exeLinks | Where-Object { $_ -match "^https://www\.stationmaster\.com/Download/Setup\d+\.exe$" }
 
 $highestVersion = 0
 $downloadLink = $null
@@ -50,8 +48,8 @@ foreach ($link in $setupLinks) {
     }
 }
 
-# Part 4 - check size and only download if different + timestamp
-# PartVersion 1.00
+# Part 4 - Enhanced Download with Integer Percentages and Detailed ETA
+# PartVersion 1.05
 # -----
 if ($downloadLink) {
     # Get the size of the file at the download link
@@ -77,17 +75,64 @@ if ($downloadLink) {
     $existingFiles = Get-ChildItem -Path $downloadDirectory -Filter "*.exe"
     $fileExists = $existingFiles | Where-Object { $_.Length -eq $contentLength }
 
-    # Download the file if no matching size file is found
     if (-not $fileExists) {
-        Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath
+        # Initialize HttpClient and HttpRequestMessage for downloading
+        $httpClient = [System.Net.Http.HttpClient]::new()
+        $httpRequest = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $downloadLink)
+        $httpRequest.Headers.Add("Accept-Encoding", "gzip, deflate")
+
+        # Define variables for progress tracking
+        $startTime = Get-Date
+        $response = $httpClient.SendAsync($httpRequest, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
+        $totalBytes = $response.Content.Headers.ContentLength
+        $stream = $response.Content.ReadAsStreamAsync().Result
+        $fileStream = [System.IO.File]::Create($destinationPath)
+
+        # Buffer for reading data
+        $buffer = New-Object byte[] 8192
+        $bytesRead = 0
+        $downloadedBytes = 0
+
+        # Define table header
+        $header = "Downloading File: $originalFilename"
+        Write-Host "`n$header"
+        Write-Host "------------------------------------------"
+
+        while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $fileStream.Write($buffer, 0, $bytesRead)
+            $downloadedBytes += $bytesRead
+            $elapsedTime = (Get-Date) - $startTime
+            $speed = $downloadedBytes / $elapsedTime.TotalSeconds
+            $remainingBytes = $totalBytes - $downloadedBytes
+            $remainingTime = $remainingBytes / $speed
+
+            # Update progress table
+            $percentage = [math]::Round(($downloadedBytes / $totalBytes) * 100)
+            $speedMB = [math]::Round($speed / 1MB, 2)
+            $etaMinutes = [math]::Floor($remainingTime / 60)
+            $etaSeconds = [math]::Round($remainingTime % 60)
+
+            $progressLine = "{0,-35} {1,3}% {2,10} MB/s {3,2}m {4,2}s" -f "Progress:", $percentage, $speedMB, $etaMinutes, $etaSeconds
+            Write-Host "`r$progressLine" -NoNewline -ForegroundColor Green
+        }
+
+        # Clean up
+        $fileStream.Close()
+        $stream.Close()
+        $httpClient.Dispose()
+
+        # Add timestamp to the downloaded file
+        $timestamp = Get-Date -Format "yyyy-MM-dd_HHmm"
+        $originalFilenameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($originalFilename)
+        $extension = [System.IO.Path]::GetExtension($originalFilename)
+        $newFileName = "${originalFilenameWithoutExtension}_${timestamp}${extension}"
+        $newFilePath = Join-Path -Path $downloadDirectory -ChildPath $newFileName
+        Rename-Item -Path $destinationPath -NewName $newFileName
+
+        Write-Host "`rDownload completed and file renamed to $newFileName" -ForegroundColor Green
+    } else {
+        Write-Host "File with the same size already exists, no download needed." -ForegroundColor Yellow
     }
-    # Add timestamp to the downloaded file
-    $timestamp = Get-Date -Format "yyyy-MM-dd_HHmm"
-    $originalFilenameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($originalFilename)
-    $extension = [System.IO.Path]::GetExtension($originalFilename)
-    $newFileName = "${originalFilenameWithoutExtension}_${timestamp}${extension}"
-    $newFilePath = Join-Path -Path $downloadDirectory -ChildPath $newFileName
-    Rename-Item -Path $destinationPath -NewName $newFileName
 }
 
 # Part 5 - delete older downloads
