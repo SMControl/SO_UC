@@ -1,4 +1,4 @@
-Write-Host "SO_UC.ps1 - Version 1.04"
+Write-Host "SO_UC.ps1 - Version 1.05"
 # -----
 # - Initial check for scheduled task
 # - Fetch and filter .exe links
@@ -51,16 +51,23 @@ foreach ($link in $setupLinks) {
     }
 }
 
-# Part 4 - check size and only download if different + timestamp
-# PartVersion 1.00
+# Part 4 - Check size and hash to prevent redundant downloads with User-Agent
+# PartVersion 1.02
 # -----
 if ($downloadLink) {
-    # Get the size of the file at the download link
+    # Create an HTTP request with User-Agent header to avoid 403 error
     $request = [System.Net.HttpWebRequest]::Create($downloadLink)
     $request.Method = "HEAD"
-    $response = $request.GetResponse()
-    $contentLength = $response.ContentLength
-    $response.Close()
+    $request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+    
+    try {
+        $response = $request.GetResponse()
+        $contentLength = $response.ContentLength
+        $response.Close()
+    } catch {
+        Write-Host "Error fetching response from server: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
 
     # Extract the original filename from the download link
     $originalFilename = $downloadLink.Split('/')[-1]
@@ -80,8 +87,12 @@ if ($downloadLink) {
 
     # Download the file if no matching size file is found
     if (-not $fileExists) {
+        Write-Host "Downloading new version of the Setup.exe..." -ForegroundColor Green
         Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath
+    } else {
+        Write-Host "File already exists and is up to date." -ForegroundColor Yellow
     }
+
     # Add timestamp to the downloaded file
     $timestamp = Get-Date -Format "yyyy-MM-dd_HHmm"
     $originalFilenameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($originalFilename)
@@ -91,7 +102,7 @@ if ($downloadLink) {
     Rename-Item -Path $destinationPath -NewName $newFileName
 }
 
-# Part 5 - delete older downloads
+# Part 5 - Delete older downloads
 # PartVersion 1.00
 # -----
 $downloadedFiles = Get-ChildItem -Path $downloadDirectory -Filter "*.exe" | Sort-Object LastWriteTime -Descending
