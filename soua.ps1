@@ -1,6 +1,7 @@
-Write-Host "SOUA.ps1 - Version 1.130" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.131" -ForegroundColor Green
 # ---
 # - dealth with having more than one setup file and to ask user which one to use
+# - had souc loader disabled still from testing
 
 # Initialize script start time
 $startTime = Get-Date
@@ -70,8 +71,7 @@ if (-not (Test-Path $SO_UC_Path)) {
 
 # Launch SO_UC.exe hidden and wait for completion
 Write-Host "Launching SO_UC.exe. Please allow through Firewall" -ForegroundColor Green
-# COMMENTED OUT FOR TESTING
-#$process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
+$process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
 if ($process) {
     Write-Host "Checking for latest version of Installer. Please wait..." -ForegroundColor Green
     $process.WaitForExit()
