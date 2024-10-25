@@ -1,7 +1,8 @@
-Write-Host "SOUA.ps1 - Version 1.131" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.132" -ForegroundColor Green
 # ---
 # - dealth with having more than one setup file and to ask user which one to use
 # - had souc loader disabled still from testing
+# - commented out red reboot warning , yellow one should be enough
 
 # Initialize script start time
 $startTime = Get-Date
@@ -19,7 +20,7 @@ if (-not (Test-Path $workingDir -PathType Container)) {
 
 Set-Location -Path $workingDir
 
-Write-Host "[WARNING] Upgrades requiring a reboot are not yet supported." -ForegroundColor Red
+#Write-Host "[WARNING] Upgrades requiring a reboot are not yet supported." -ForegroundColor Red
 Write-Host "[WARNING] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
 
 # Part 1 - Check for Admin Rights
