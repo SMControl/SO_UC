@@ -16,6 +16,7 @@
 
 ## SO_UC.exe
 
+- SO Update Checker
 - Sets a scheduled task to run itself at a random time between 01:00 and 05:00.
 - Checks SM for newer version of Stable and Development Setup files and downloads them only if different than what it has.
 - Stores setup files in "C:\winsm\SmartOffice_Installer"
