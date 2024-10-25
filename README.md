@@ -10,11 +10,19 @@
 
 
 ## Task Performed
-1. Downloads latest Installer from SM and sets a task to check for new versions daily.
+1. Downloads latest Stable and Development Installers from SM and sets a task to check for new versions daily using SO_UC.exe (See below)
 3. Checks Firebird; Installs if missing.
 4. Deals with Firebird using programs and services PRE and POST Upgrade.
 5. Waits for single instance of Firebird before launching the Setup.
-6. Sets folder permissions
+6. Will ask which version of Setup to use, so suitable for installing both Stable & Development builds.
+7. Sets folder permissions
+8. Puts PDTWifi and LiveSales etc back as they were.
+
+## SO_UC.exe
+
+- Sets a scheduled task to run itself at a random time between 01:00 and 05:00.
+- Checks SM for newer version of Stable and Development Setup files and downloads them only if different than what it has.
+- Stores setup files in "C:\winsm\SmartOffice_Installer"
 
 ## Requirements
 
