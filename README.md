@@ -29,7 +29,7 @@
 
 ## Usage
 
-Run the following command in an Admin PowerShell to execute the script:
+After a backup has been performed; run the following command in an Admin PowerShell to execute the script:
 ```
 irm https://raw.githubusercontent.com/SMControl/SO_UC/main/soua.ps1 | iex
 ```
