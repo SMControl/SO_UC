@@ -6,17 +6,13 @@
 - During script SO_UC.exe will require access through the firewall to retreive the latest SO Installer exe.
 - Does not currently support SO Installer needing a reboot. (In this case an upgrade would be finished manually)
 
-![](https://github.com/SMControl/SO_UC/blob/main/2024-06-24_21-29.png)
-
-
 ## Task Performed
-1. Downloads latest Stable and Development Installers from SM and sets a task to check for new versions daily using SO_UC.exe (See below)
-3. Checks Firebird; Installs if missing.
+1. Downloads latest Stable and Development Installers from SM and sets a task to check for new versions daily using **SO_UC.exe** (See below)
+3. Checks Firebird; Installs with SM requirements if missing.
 4. Deals with Firebird using programs and services PRE and POST Upgrade.
 5. Waits for single instance of Firebird before launching the Setup.
 6. Will ask which version of Setup to use, so suitable for installing both Stable & Development builds.
 7. Sets folder permissions
-8. Puts PDTWifi and LiveSales etc back as they were.
 
 ## SO_UC.exe
 
@@ -26,7 +22,7 @@
 
 ## Requirements
 
-- Windows 7 SP1 or Windows Server 2008 R2 SP1
+- Windows 7 SP1 and newer
 - Internet access for downloading latest Installer
 
 ## Usage
