@@ -1,8 +1,6 @@
-Write-Host "SOUA.ps1 - Version 1.129" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.130" -ForegroundColor Green
 # ---
-# - solution for smupdates, function in part 5 kills it every 2 seconds until part 10.
-# - upgrade complete ok box
-# - cleaned up firebird installation sometimes succeding but saying it failed and then quitting overall script
+# - dealth with having more than one setup file and to ask user which one to use
 
 # Initialize script start time
 $startTime = Get-Date
@@ -72,7 +70,8 @@ if (-not (Test-Path $SO_UC_Path)) {
 
 # Launch SO_UC.exe hidden and wait for completion
 Write-Host "Launching SO_UC.exe. Please allow through Firewall" -ForegroundColor Green
-$process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
+# COMMENTED OUT FOR TESTING
+#$process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
 if ($process) {
     Write-Host "Checking for latest version of Installer. Please wait..." -ForegroundColor Green
     $process.WaitForExit()
@@ -191,23 +190,63 @@ function WaitForSingleFirebirdInstance {
 
 WaitForSingleFirebirdInstance
 
-# Part 9 - Launch SO Setup Executable
+# Part 9 - Launch SO Setup Executable with Enhanced Terminal Menu
+# PartVersion 1.01
 # -----
-Write-Host "[Part 9/15] Launching SO setup executable" -ForegroundColor Cyan
+# Improved terminal selection menu with colors and table formatting
 
-$setupExe = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe" | Select-Object -First 1
-if ($setupExe) {
-    Write-Host "Found setup executable: $($setupExe)" -ForegroundColor Green
-    try {
-        Start-Process -FilePath $setupExe.FullName -Wait
-    } catch {
-        Write-Host "Error starting setup executable: $_" -ForegroundColor Red
-        exit
-    }
-} else {
+Write-Host "[Part 9/15] Launching SO setup executable with enhanced terminal menu" -ForegroundColor Cyan
+
+# Get all setup executables in the SmartOffice_Installer directory
+$setupExes = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe"
+
+if ($setupExes.Count -eq 0) {
     Write-Host "Error: No executable (.exe) found in 'C:\winsm\SmartOffice_Installer'." -ForegroundColor Red
     exit
+} elseif ($setupExes.Count -eq 1) {
+    # Only one file found, proceed without asking the user
+    $selectedExe = $setupExes[0]
+    Write-Host "Found setup executable: $($selectedExe.Name)" -ForegroundColor Green
+} else {
+    # Multiple setup files found, present a terminal selection menu
+    Write-Host "`nPlease select an executable to run:`n" -ForegroundColor Yellow
+    Write-Host ("{0,-5} {1,-50}" -f "No.", "Executable Name") -ForegroundColor White
+    Write-Host ("{0,-5} {1,-50}" -f "---", "----------------") -ForegroundColor Gray
+
+    for ($i = 0; $i -lt $setupExes.Count; $i++) {
+        Write-Host ("{0,-5} {1,-50}" -f ($i + 1), $setupExes[$i].Name) -ForegroundColor Green
+    }
+
+    Write-Host "`nEnter the number of your selection (or press Enter to cancel):" -ForegroundColor Cyan
+
+    # Get user input
+    $selection = Read-Host "Selection"
+
+    # Check if the user wants to cancel
+    if ([string]::IsNullOrWhiteSpace($selection)) {
+        Write-Host "Operation cancelled. Exiting." -ForegroundColor Red
+        exit
+    }
+
+    # Validate the selection
+    if ($selection -match '^\d+$' -and $selection -ge 1 -and $selection -le $setupExes.Count) {
+        $selectedExe = $setupExes[$selection - 1]  # Convert to 0-based index
+        Write-Host "Selected setup executable: $($selectedExe.Name)" -ForegroundColor Green
+    } else {
+        Write-Host "Invalid selection. Exiting." -ForegroundColor Red
+        exit
+    }
 }
+
+# Launch the selected setup executable
+try {
+    Write-Host "Starting executable: $($selectedExe.Name) ..." -ForegroundColor Cyan
+    Start-Process -FilePath $selectedExe.FullName -Wait
+} catch {
+    Write-Host "Error starting setup executable: $_" -ForegroundColor Red
+    exit
+}
+
 
 # Part 10 - Wait for User Confirmation
 # -----
