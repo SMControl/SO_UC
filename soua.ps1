@@ -1,8 +1,6 @@
-Write-Host "SOUA.ps1 - Version 1.132" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.133" -ForegroundColor Green
 # ---
-# - dealth with having more than one setup file and to ask user which one to use
-# - had souc loader disabled still from testing
-# - commented out red reboot warning , yellow one should be enough
+# - cleaned up commenting
 
 # Initialize script start time
 $startTime = Get-Date
@@ -21,7 +19,7 @@ if (-not (Test-Path $workingDir -PathType Container)) {
 Set-Location -Path $workingDir
 
 #Write-Host "[WARNING] Upgrades requiring a reboot are not yet supported." -ForegroundColor Red
-Write-Host "[WARNING] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
+Write-Host "[NOTICE] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
 
 # Part 1 - Check for Admin Rights
 # -----
@@ -171,7 +169,7 @@ $PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | O
 
 # Part 8 - Wait for Single Instance of Firebird.exe
 # -----
-Write-Host "[Part 8/15] Checking and waiting for a single instance of Firebird" -ForegroundColor Cyan
+Write-Host "[Part 8/15] Checking / Waiting for a single instance of Firebird" -ForegroundColor Cyan
 
 $setupDir = "$workingDir\SmartOffice_Installer"
 if (-not (Test-Path $setupDir -PathType Container)) {
@@ -196,7 +194,7 @@ WaitForSingleFirebirdInstance
 # -----
 # Improved terminal selection menu with colors and table formatting
 
-Write-Host "[Part 9/15] Launching SO setup executable with enhanced terminal menu" -ForegroundColor Cyan
+Write-Host "[Part 9/15] Launching SO setup..." -ForegroundColor Cyan
 
 # Get all setup executables in the SmartOffice_Installer directory
 $setupExes = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe"
@@ -207,10 +205,10 @@ if ($setupExes.Count -eq 0) {
 } elseif ($setupExes.Count -eq 1) {
     # Only one file found, proceed without asking the user
     $selectedExe = $setupExes[0]
-    Write-Host "Found setup executable: $($selectedExe.Name)" -ForegroundColor Green
+    Write-Host "Found setup: $($selectedExe.Name)" -ForegroundColor Green
 } else {
     # Multiple setup files found, present a terminal selection menu
-    Write-Host "`nPlease select an executable to run:`n" -ForegroundColor Yellow
+    Write-Host "`nPlease select the setup to run:`n" -ForegroundColor Yellow
     Write-Host ("{0,-5} {1,-50}" -f "No.", "Executable Name") -ForegroundColor White
     Write-Host ("{0,-5} {1,-50}" -f "---", "----------------") -ForegroundColor Gray
 
@@ -255,7 +253,7 @@ Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
 # Stop monitoring SMUpdates process
 Stop-Job -Job $monitorJob
 Remove-Job -Job $monitorJob
-Write-Host "Waiting for confirmation Upgrade is fully complete and SO is closed." -ForegroundColor Yellow
+Write-Host "Waiting for confirmation Upgrade is Complete..." -ForegroundColor Yellow
 Add-Type -AssemblyName System.Windows.Forms
 [System.Windows.Forms.MessageBox]::Show("ONLY when the upgrade is FULLY complete and SO is closed.`n`nClick OK to complete Post Install tasks.", "SO Post Upgrade Confirmation", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
@@ -271,7 +269,7 @@ foreach ($process in $processesToCheck) {
 
 # Part 11 - Set Permissions for SM Folder
 # -----
-Write-Host "[Part 11/15] Setting permissions for SM folder" -ForegroundColor Cyan
+Write-Host "[Part 11/15] Setting permissions for SM folder. Please Wait..." -ForegroundColor Cyan
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -280,7 +278,7 @@ try {
 
 # Part 12 - Set Permissions for Firebird Folder
 # -----
-Write-Host "[Part 12/15] Setting permissions for Firebird folder" -ForegroundColor Cyan
+Write-Host "[Part 12/15] Setting permissions for Firebird folder. Please Wait..." -ForegroundColor Cyan
 try {
     & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -336,14 +334,16 @@ foreach ($process in $PDTWiFiProcesses) {
     }
 }
 
+# Part 15 - Clean up and Finish Script
+# -----
+Write-Host "[Part 15/15] Cleaning up and finishing script..." -ForegroundColor Cyan
+
 # Clean up temporary file
 if (Test-Path $PDTWiFiStatesFilePath) {
     Remove-Item -Path $PDTWiFiStatesFilePath -Force
 }
 
-# Part 15 - Clean up and Finish Script
-# -----
-Write-Host "[Part 15/15] Cleaning up and finishing script" -ForegroundColor Cyan
+
 
 # Calculate and display script execution time
 $endTime = Get-Date
