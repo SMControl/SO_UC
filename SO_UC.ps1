@@ -1,11 +1,11 @@
 Write-Host "SO_UC.ps1 - Version 1.06"
 # -----
-# - Download the highest two Setup.exe versions
-# - Retain only the two most recent versions
+# - Cleaned up messaging
 
 # Part 1 - Check if scheduled task exists and create if it doesn't
 # PartVersion 1.00
 # -----
+Write-Host "Checking Task..."
 $taskExists = Get-ScheduledTask -TaskName "SO InstallerUpdates" -ErrorAction SilentlyContinue
 
 if (-not $taskExists) {
@@ -20,6 +20,7 @@ if (-not $taskExists) {
 # Part 2 - Retrieve .exe links from the webpage
 # PartVersion 1.00
 # -----
+Write-Host "Checking Versions..."
 $exeLinks = (Invoke-WebRequest -Uri "https://www.stationmaster.com/downloads/").Links | Where-Object { $_.href -match "\.exe$" } | ForEach-Object { $_.href }
 
 # Part 3 - Filter for the highest two versions of Setup.exe
@@ -75,6 +76,7 @@ foreach ($downloadLink in $highestTwoLinks) {
 # Part 5 - Delete older downloads, keeping the latest two
 # PartVersion 1.01
 # -----
+Write-Host "Cleaning Up..."
 $downloadedFiles = Get-ChildItem -Path $downloadDirectory -Filter "*.exe" | Sort-Object LastWriteTime -Descending
 if ($downloadedFiles.Count -gt 2) {
     $filesToDelete = $downloadedFiles | Select-Object -Skip 2
@@ -83,3 +85,4 @@ if ($downloadedFiles.Count -gt 2) {
         Remove-Item -Path $file.FullName -Force
     }
 }
+Write-Host "Finished"
