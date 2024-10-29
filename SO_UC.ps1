@@ -1,6 +1,7 @@
-Write-Host "SO_UC.ps1 - Version 1.06"
+Write-Host "SO_UC.ps1 - Version 1.07"
 # -----
 # - Cleaned up messaging
+# - version bump
 
 # Part 1 - Check if scheduled task exists and create if it doesn't
 # PartVersion 1.00
