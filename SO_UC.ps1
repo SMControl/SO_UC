@@ -1,7 +1,8 @@
-Write-Host "SO_UC.ps1 - Version 1.07"
+Write-Host "SO_UC.ps1 - Version 1.08"
 # -----
 # - Cleaned up messaging
 # - version bump
+# - rmeoved timestamp renaming stuff
 
 # Part 1 - Check if scheduled task exists and create if it doesn't
 # PartVersion 1.00
@@ -63,16 +64,11 @@ foreach ($downloadLink in $highestTwoLinks) {
     if (-not $fileExists) {
         Write-Host "Downloading new version: $originalFilename" -ForegroundColor Green
         Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath
-
-        $timestamp = Get-Date -Format "yyyy-MM-dd_HHmm"
-        $originalFilenameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($originalFilename)
-        $extension = [System.IO.Path]::GetExtension($originalFilename)
-        $newFileName = "${originalFilenameWithoutExtension}_${timestamp}${extension}"
-        Rename-Item -Path $destinationPath -NewName $newFileName
     } else {
         Write-Host "File $originalFilename already exists and is up to date." -ForegroundColor Yellow
     }
 }
+
 
 # Part 5 - Delete older downloads, keeping the latest two
 # PartVersion 1.01
