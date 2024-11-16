@@ -1,6 +1,7 @@
-Write-Host "SOUA.ps1 - Version 1.133" -ForegroundColor Green
+Write-Host "SOUA.ps1 - Version 1.134" -ForegroundColor Green
 # ---
-# - cleaned up commenting
+# - Part 3 - SO_UC.exe functionaility is now built.
+# - Part 2 - Will now wait until SO is closed instead of quitting.
 
 # Initialize script start time
 $startTime = Get-Date
@@ -39,46 +40,84 @@ if (-not (Test-Admin)) {
 # -----
 Write-Host "[Part 2/15] Checking processes" -ForegroundColor Cyan
 $processesToCheck = @("Sm32Main", "Sm32")
+
 foreach ($process in $processesToCheck) {
-    if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-        Write-Host "Error: SO process '$process' is running. Close it and retry." -ForegroundColor Red
-        pause
-        exit
+    # Check if the process is running
+    $processRunning = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if ($processRunning) {
+        Write-Host "Smart Office is open. Please close it to continue." -ForegroundColor Red
+        while (Get-Process -Name $process -ErrorAction SilentlyContinue) {
+            # Wait without spamming the terminal
+            Start-Sleep -Seconds 3  # Check every 3 seconds
+        }
     }
 }
 
-# Part 3 - Download SO_UC.exe
+# Part 3 - SO_UC.exe
 # -----
-Write-Host "[Part 3/15] Checking SO_UC" -ForegroundColor Cyan
-$SO_UC_Path = "$workingDir\SO_UC.exe"
-$SO_UC_URL = "https://github.com/SMControl/SO_UC/raw/main/SO_UC.exe"
+# Section A - Retrieve .exe links from the webpage
+# PartVersion 1.00
+# -----
+Write-Host "Checking Versions..."
+$exeLinks = (Invoke-WebRequest -Uri "https://www.stationmaster.com/downloads/").Links | Where-Object { $_.href -match "\.exe$" } | ForEach-Object { $_.href }
 
-if (-not (Test-Path $SO_UC_Path)) {
-    Write-Host "Not found. Downloading..." -ForegroundColor Yellow
+# Section B - Filter for the highest two versions of Setup.exe
+# PartVersion 1.01
+# -----
+$setupLinks = $exeLinks | Where-Object { $_ -match "^https://www\.stationmaster\.com/Download/Setup\d+\.exe$" }
+$sortedLinks = $setupLinks | Sort-Object { [regex]::Match($_, "Setup(\d+)\.exe").Groups[1].Value -as [int] } -Descending
+
+$highestTwoLinks = $sortedLinks | Select-Object -First 2
+
+# Section C - Download the highest two versions if not already present
+# PartVersion 1.03
+# -----
+$downloadDirectory = "C:\winsm\SmartOffice_Installer"
+if (-not (Test-Path $downloadDirectory)) {
+    New-Item -ItemType Directory -Path $downloadDirectory
+}
+
+foreach ($downloadLink in $highestTwoLinks) {
+    $originalFilename = $downloadLink.Split('/')[-1]
+    $destinationPath = Join-Path -Path $downloadDirectory -ChildPath $originalFilename
+
+    $request = [System.Net.HttpWebRequest]::Create($downloadLink)
+    $request.Method = "HEAD"
+    $request.UserAgent = "Mozilla/5.0"
+
     try {
-        Invoke-WebRequest -Uri $SO_UC_URL -OutFile $SO_UC_Path -ErrorAction Stop
-        Write-Host "Download complete." -ForegroundColor Green
+        $response = $request.GetResponse()
+        $contentLength = $response.ContentLength
+        $response.Close()
     } catch {
-        Write-Host "Error downloading SO_UC: $_" -ForegroundColor Red
-        exit
+        Write-Host "Error fetching response from server: $($_.Exception.Message)" -ForegroundColor Red
+        return
     }
-} else {
-    Write-Host "SO_UC.exe already exists." -ForegroundColor Green
+
+    $existingFiles = Get-ChildItem -Path $downloadDirectory -Filter "*.exe"
+    $fileExists = $existingFiles | Where-Object { $_.Length -eq $contentLength }
+
+    if (-not $fileExists) {
+        Write-Host "Downloading new version: $originalFilename" -ForegroundColor Green
+        Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath
+    } else {
+        #Write-Host "File $originalFilename already exists and is up to date." -ForegroundColor Yellow
+    }
 }
 
-
-
-# Launch SO_UC.exe hidden and wait for completion
-Write-Host "Launching SO_UC.exe. Please allow through Firewall" -ForegroundColor Green
-$process = Start-Process -FilePath $SO_UC_Path -PassThru -WindowStyle Hidden
-if ($process) {
-    Write-Host "Checking for latest version of Installer. Please wait..." -ForegroundColor Green
-    $process.WaitForExit()
-    Start-Sleep -Seconds 2
-} else {
-    Write-Host "Failed to start SO_UC.exe." -ForegroundColor Red
-    exit
+# Section D - Delete older downloads, keeping the latest two
+# PartVersion 1.01
+# -----
+#Write-Host "Cleaning Up..."
+$downloadedFiles = Get-ChildItem -Path $downloadDirectory -Filter "*.exe" | Sort-Object LastWriteTime -Descending
+if ($downloadedFiles.Count -gt 2) {
+    $filesToDelete = $downloadedFiles | Select-Object -Skip 2
+    foreach ($file in $filesToDelete) {
+        #Write-Host "Deleting old file: $($file.Name)" -ForegroundColor Red
+        Remove-Item -Path $file.FullName -Force
+    }
 }
+
 
 # Part 4 - Check for Firebird Installation
 # -----
@@ -97,7 +136,7 @@ if (-not (Test-Path $firebirdDir)) {
         exit
     }
 } else {
-    Write-Host "Firebird is already installed." -ForegroundColor Green
+    #Write-Host "Firebird is already installed." -ForegroundColor Green
 }
 
 
@@ -182,7 +221,7 @@ function WaitForSingleFirebirdInstance {
     while ($firebirdProcesses.Count -gt 1) {
         Write-Host "Warning: Multiple instances of 'firebird.exe' are running." -ForegroundColor Yellow
         Write-Host "Currently running instances: $($firebirdProcesses.Count)" -ForegroundColor Yellow
-        Start-Sleep -Seconds 1
+        Start-Sleep -Seconds 3
         $firebirdProcesses = Get-Process -Name "firebird" -ErrorAction SilentlyContinue
     }
 }
@@ -209,11 +248,13 @@ if ($setupExes.Count -eq 0) {
 } else {
     # Multiple setup files found, present a terminal selection menu
     Write-Host "`nPlease select the setup to run:`n" -ForegroundColor Yellow
-    Write-Host ("{0,-5} {1,-50}" -f "No.", "Executable Name") -ForegroundColor White
-    Write-Host ("{0,-5} {1,-50}" -f "---", "----------------") -ForegroundColor Gray
+    Write-Host ("{0,-5} {1,-35} {2,-20}" -f "No.", "Executable Name", "Date Modified") -ForegroundColor White
+    Write-Host ("{0,-5} {1,-35} {2,-20}" -f "---", "----------------", "------------") -ForegroundColor Gray
 
     for ($i = 0; $i -lt $setupExes.Count; $i++) {
-        Write-Host ("{0,-5} {1,-50}" -f ($i + 1), $setupExes[$i].Name) -ForegroundColor Green
+        $exe = $setupExes[$i]
+        $dateModified = $exe.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+        Write-Host ("{0,-5} {1,-35} {2,-20}" -f ($i + 1), $exe.Name, $dateModified) -ForegroundColor Green
     }
 
     Write-Host "`nEnter the number of your selection (or press Enter to cancel):" -ForegroundColor Cyan
@@ -246,7 +287,6 @@ try {
     exit
 }
 
-
 # Part 10 - Wait for User Confirmation
 # -----
 Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
@@ -264,8 +304,6 @@ foreach ($process in $processesToCheck) {
         Read-Host
     }
 }
-
-
 
 # Part 11 - Set Permissions for SM Folder
 # -----
@@ -342,8 +380,6 @@ Write-Host "[Part 15/15] Cleaning up and finishing script..." -ForegroundColor C
 if (Test-Path $PDTWiFiStatesFilePath) {
     Remove-Item -Path $PDTWiFiStatesFilePath -Force
 }
-
-
 
 # Calculate and display script execution time
 $endTime = Get-Date
