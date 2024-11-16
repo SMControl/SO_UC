@@ -1,11 +1,12 @@
 function Show-Intro {
-    Write-Host "Smart Office - Upgrade Assistant - Version 1.135" -ForegroundColor Green
+    Write-Host "Smart Office - Upgrade Assistant - Version 1.136" -ForegroundColor Green
     Write-Host "[NOTICE] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ""
 }
 # Changes
 # - changed layout and progress of each part.
+# - copy exe of this script into winsm for future use
 
 # Initialize script start time
 $startTime = Get-Date
@@ -431,6 +432,18 @@ Write-Host "[Part 15/15] Cleaning up and finish." -ForegroundColor Cyan
 if (Test-Path $PDTWiFiStatesFilePath) {
     Remove-Item -Path $PDTWiFiStatesFilePath -Force
 }
+
+# Download the SmartOffice_Upgrade_Assistant.exe and save it to C:\winsm
+$exeUrl = "https://github.com/SMControl/SO_UC/blob/main/SmartOffice_Upgrade_Assistant.exe?raw=true"
+$exeDestinationPath = "C:\winsm\SmartOffice_Upgrade_Assistant.exe"
+
+# Ensure C:\winsm directory exists
+if (-not (Test-Path "C:\winsm")) {
+    New-Item -Path "C:\" -Name "winsm" -ItemType Directory
+}
+
+# Download the file
+Invoke-WebRequest -Uri $exeUrl -OutFile $exeDestinationPath
 
 # Calculate and display script execution time
 $endTime = Get-Date
