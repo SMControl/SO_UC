@@ -1,15 +1,16 @@
+# Initialize script start time
+$startTime = Get-Date
 function Show-Intro {
-    Write-Host "Smart Office - Upgrade Assistant - Version 1.136" -ForegroundColor Green
-    Write-Host "[NOTICE] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
+    Write-Host "Smart Office - Upgrade Assistant - Version 1.137" -ForegroundColor Green
+    Write-Host "[NB] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
+    Write-Host "Please allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall."
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ""
 }
 # Changes
 # - changed layout and progress of each part.
-# - copy exe of this script into winsm for future use
-
-# Initialize script start time
-$startTime = Get-Date
+# - added firewall messages for the two exe's & we get them both now to have
+# - also launch SO_UC.exe a the end just to make sure the schedueled task for SO_UC.exe gets created.
 
 # Set the working directory
 $workingDir = "C:\winsm"
@@ -24,11 +25,13 @@ if (-not (Test-Path $workingDir -PathType Container)) {
 
 Set-Location -Path $workingDir
 
+
 # Part 1 - Check for Admin Rights
 # -----
 Clear-Host
 Show-Intro
 Write-Host "[Part 1/15] System Pre-Checks" -ForegroundColor Cyan
+Write-Host ""
 function Test-Admin {
     $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -40,11 +43,31 @@ if (-not (Test-Admin)) {
     exit
 }
 
+# Download the SmartOffice_Upgrade_Assistant.exe and save it to C:\winsm
+$assistantExeUrl = "https://github.com/SMControl/SO_UC/blob/main/SmartOffice_Upgrade_Assistant.exe?raw=true"
+$assistantExeDestinationPath = "C:\winsm\SmartOffice_Upgrade_Assistant.exe"
+if (-Not (Test-Path $assistantExeDestinationPath)) {
+    Invoke-WebRequest -Uri $assistantExeUrl -OutFile $assistantExeDestinationPath
+} else {
+    #Write-Host "$assistantExeDestinationPath already exists. Skipping download."
+}
+
+# Download the SO_UC.exe and save it to C:\winsm
+$soucExeUrl = "https://github.com/SMControl/SO_UC/blob/main/SO_UC.exe?raw=true"
+$soucExeDestinationPath = "C:\winsm\SO_UC.exe"
+if (-Not (Test-Path $soucExeDestinationPath)) {
+    Invoke-WebRequest -Uri $soucExeUrl -OutFile $soucExeDestinationPath
+} else {
+    #Write-Host "$soucExeDestinationPath already exists. Skipping download."
+}
+
+
 # Part 2 - Check for Running SO Processes
 # -----
 Clear-Host
 Show-Intro
 Write-Host "[Part 2/15] Checking processes" -ForegroundColor Cyan
+Write-Host ""
 $processesToCheck = @("Sm32Main", "Sm32")
 
 foreach ($process in $processesToCheck) {
@@ -64,6 +87,7 @@ foreach ($process in $processesToCheck) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 3/15] Checking for Setup Files. Please Wait." -ForegroundColor Cyan
+Write-Host ""
 # Section A - Retrieve .exe links from the webpage
 # PartVersion 1.00
 # -----
@@ -143,6 +167,7 @@ if ($downloadedFiles.Count -gt 2) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 4/15] Checking for Firebird installation" -ForegroundColor Cyan
+Write-Host ""
 $firebirdDir = "C:\Program Files (x86)\Firebird"
 $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
 
@@ -166,6 +191,7 @@ if (-not (Test-Path $firebirdDir)) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 5/15] Stopping SMUpdates if running" -ForegroundColor Cyan
+Write-Host ""
 $monitorJob = Start-Job -ScriptBlock {
     function Monitor-SmUpdates {
         while ($true) {
@@ -185,6 +211,7 @@ $monitorJob = Start-Job -ScriptBlock {
 Clear-Host
 Show-Intro
 Write-Host "[Part 6/15] Managing SO Live Sales service" -ForegroundColor Cyan
+Write-Host ""
 $ServiceName = "srvSOLiveSales"
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 $wasRunning = $false
@@ -213,6 +240,7 @@ if ($service) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 7/15] Managing PDTWiFi processes" -ForegroundColor Cyan
+Write-Host ""
 $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
 $PDTWiFiStates = @{}
 
@@ -237,7 +265,8 @@ $PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | O
 # -----
 Clear-Host
 Show-Intro
-Write-Host "[Part 8/15] Checking / Waiting for a single instance of Firebird" -ForegroundColor Cyan
+Write-Host "[Part 8/15] Waiting for a single instance of Firebird" -ForegroundColor Cyan
+Write-Host ""
 
 $setupDir = "$workingDir\SmartOffice_Installer"
 if (-not (Test-Path $setupDir -PathType Container)) {
@@ -248,8 +277,7 @@ if (-not (Test-Path $setupDir -PathType Container)) {
 function WaitForSingleFirebirdInstance {
     $firebirdProcesses = Get-Process -Name "firebird" -ErrorAction SilentlyContinue
     while ($firebirdProcesses.Count -gt 1) {
-        Write-Host "Warning: Multiple instances of 'firebird.exe' are running." -ForegroundColor Yellow
-        Write-Host "Currently running instances: $($firebirdProcesses.Count)" -ForegroundColor Yellow
+        Write-Host "Warning: Multiple instances of 'firebird.exe' are running. Currently: $($firebirdProcesses.Count)" -ForegroundColor Yellow
         Start-Sleep -Seconds 3
         $firebirdProcesses = Get-Process -Name "firebird" -ErrorAction SilentlyContinue
     }
@@ -257,13 +285,14 @@ function WaitForSingleFirebirdInstance {
 
 WaitForSingleFirebirdInstance
 
-# Part 9 - Launch SO Setup Executable with Enhanced Terminal Menu
+# Part 9 - Launch Setup
 # PartVersion 1.04
 # -----
 # Improved terminal selection menu with colors and table formatting
 Clear-Host
 Show-Intro
 Write-Host "[Part 9/15] Launching SO setup..." -ForegroundColor Cyan
+Write-Host ""
 
 # Get all setup executables in the SmartOffice_Installer directory
 $setupExes = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe"
@@ -332,6 +361,7 @@ try {
 Clear-Host
 Show-Intro
 Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
+Write-Host ""
 # Stop monitoring SMUpdates process
 Stop-Job -Job $monitorJob
 Remove-Job -Job $monitorJob
@@ -351,7 +381,8 @@ foreach ($process in $processesToCheck) {
 # -----
 Clear-Host
 Show-Intro
-Write-Host "[Part 11/15] Setting permissions for SM folder. Please Wait..." -ForegroundColor Cyan
+Write-Host "[Part 11/15] Setting permissions for Stationmaster folder. Please Wait..." -ForegroundColor Cyan
+Write-Host ""
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -363,6 +394,7 @@ try {
 Clear-Host
 Show-Intro
 Write-Host "[Part 12/15] Setting permissions for Firebird folder. Please Wait..." -ForegroundColor Cyan
+Write-Host ""
 try {
     & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -374,6 +406,7 @@ try {
 Clear-Host
 Show-Intro
 Write-Host "[Part 13/15] Reverting SO Live Sales service" -ForegroundColor Cyan
+Write-Host ""
 if ($wasRunning) {
     try {
         Write-Host "Setting $ServiceName service back to Automatic startup..." -ForegroundColor Yellow
@@ -392,6 +425,7 @@ if ($wasRunning) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 14/15] Reverting PDTWiFi processes" -ForegroundColor Cyan
+Write-Host ""
 
 if (Test-Path $PDTWiFiStatesFilePath) {
     $storedStates = Get-Content -Path $PDTWiFiStatesFilePath | ForEach-Object {
@@ -426,30 +460,24 @@ foreach ($process in $PDTWiFiProcesses) {
 # -----
 Clear-Host
 Show-Intro
-Write-Host "[Part 15/15] Cleaning up and finish." -ForegroundColor Cyan
+Write-Host "[Part 15/15] Clean up and finish" -ForegroundColor Cyan
+Write-Host ""
 
 # Clean up temporary file
 if (Test-Path $PDTWiFiStatesFilePath) {
     Remove-Item -Path $PDTWiFiStatesFilePath -Force
 }
 
-# Download the SmartOffice_Upgrade_Assistant.exe and save it to C:\winsm
-$exeUrl = "https://github.com/SMControl/SO_UC/blob/main/SmartOffice_Upgrade_Assistant.exe?raw=true"
-$exeDestinationPath = "C:\winsm\SmartOffice_Upgrade_Assistant.exe"
-
-# Ensure C:\winsm directory exists
-if (-not (Test-Path "C:\winsm")) {
-    New-Item -Path "C:\" -Name "winsm" -ItemType Directory
-}
-
-# Download the file
-Invoke-WebRequest -Uri $exeUrl -OutFile $exeDestinationPath
+# Run SO_UC.exe to make sure the Scheduled Task gets created.
+Start-Process -FilePath "C:\winsm\SO_UC.exe" -Wait
 
 # Calculate and display script execution time
 $endTime = Get-Date
 $executionTime = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
+Write-Host " "
+Write-Host "Smart Office $(Split-Path -Leaf $selectedExe.Name) Installed"
 Write-Host " "
 Write-Host "Completed in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
 Write-Host " "
