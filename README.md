@@ -12,7 +12,7 @@
 2. Checks if Firebird is installed and does so with SM criteria if required.
 3. Deals with Firebird using programs and services PRE and POST Upgrade (LiveSales, PDTWiFi etc).
 5. Will ask which version of Setup to use, so suitable for installing/upgrading both Stable & Development builds.
-6. Sets correct folder permissions on appropriate folders.
+6. Sets correct folder permissions.
 
 ## SO_UC.exe
 
@@ -26,6 +26,7 @@
 
 - Windows 7 SP1 and newer
 - Internet access for downloading latest Installer
+- SO_UC.exe & SmartOffice_Upgrade_Assistant.exe must be allowed through the Firewall
 
 ## Usage
 
@@ -33,4 +34,3 @@ After a backup has been performed; run the following command in an Admin PowerSh
 ```
 irm https://raw.githubusercontent.com/SMControl/SO_UC/main/soua.ps1 | iex
 ```
-
