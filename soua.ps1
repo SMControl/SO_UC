@@ -1,7 +1,11 @@
-Write-Host "SOUA.ps1 - Version 1.134" -ForegroundColor Green
-# ---
-# - Part 3 - SO_UC.exe functionaility is now built.
-# - Part 2 - Will now wait until SO is closed instead of quitting.
+function Show-Intro {
+    Write-Host "Smart Office - Upgrade Assistant - Version 1.135" -ForegroundColor Green
+    Write-Host "[NOTICE] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
+    Write-Host "--------------------------------------------------------------------------------"
+    Write-Host ""
+}
+# Changes
+# - changed layout and progress of each part.
 
 # Initialize script start time
 $startTime = Get-Date
@@ -19,11 +23,10 @@ if (-not (Test-Path $workingDir -PathType Container)) {
 
 Set-Location -Path $workingDir
 
-#Write-Host "[WARNING] Upgrades requiring a reboot are not yet supported." -ForegroundColor Red
-Write-Host "[NOTICE] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
-
 # Part 1 - Check for Admin Rights
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 1/15] System Pre-Checks" -ForegroundColor Cyan
 function Test-Admin {
     $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -38,6 +41,8 @@ if (-not (Test-Admin)) {
 
 # Part 2 - Check for Running SO Processes
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 2/15] Checking processes" -ForegroundColor Cyan
 $processesToCheck = @("Sm32Main", "Sm32")
 
@@ -55,32 +60,48 @@ foreach ($process in $processesToCheck) {
 
 # Part 3 - SO_UC.exe
 # -----
+Clear-Host
+Show-Intro
+Write-Host "[Part 3/15] Checking for Setup Files. Please Wait." -ForegroundColor Cyan
 # Section A - Retrieve .exe links from the webpage
 # PartVersion 1.00
 # -----
-Write-Host "Checking Versions..."
-$exeLinks = (Invoke-WebRequest -Uri "https://www.stationmaster.com/downloads/").Links | Where-Object { $_.href -match "\.exe$" } | ForEach-Object { $_.href }
+$downloadDirectory = "C:\winsm\SmartOffice_Installer"
+$webpageUrl = "https://www.stationmaster.com/downloads/"
 
+if (-not (Test-Path $downloadDirectory)) {
+    # Ensure download directory exists
+    New-Item -ItemType Directory -Path $downloadDirectory | Out-Null
+}
+
+# Retrieve Setup.exe links
+$setupLinks = (Invoke-WebRequest -Uri $webpageUrl).Links |
+              Where-Object { $_.href -match "^https://www\.stationmaster\.com/Download/Setup\d+\.exe$" } |
+              ForEach-Object { $_.href }
+
+# -----
 # Section B - Filter for the highest two versions of Setup.exe
 # PartVersion 1.01
 # -----
-$setupLinks = $exeLinks | Where-Object { $_ -match "^https://www\.stationmaster\.com/Download/Setup\d+\.exe$" }
-$sortedLinks = $setupLinks | Sort-Object { [regex]::Match($_, "Setup(\d+)\.exe").Groups[1].Value -as [int] } -Descending
+$setupLinksWithVersions = $setupLinks | ForEach-Object {
+    [PSCustomObject]@{
+        Link = $_
+        Version = [regex]::Match($_, "Setup(\d+)\.exe").Groups[1].Value -as [int]
+    }
+}
+$highestTwoLinks = $setupLinksWithVersions |
+                   Sort-Object -Property Version -Descending |
+                   Select-Object -First 2 -ExpandProperty Link
 
-$highestTwoLinks = $sortedLinks | Select-Object -First 2
-
+# -----
 # Section C - Download the highest two versions if not already present
 # PartVersion 1.03
 # -----
-$downloadDirectory = "C:\winsm\SmartOffice_Installer"
-if (-not (Test-Path $downloadDirectory)) {
-    New-Item -ItemType Directory -Path $downloadDirectory
-}
-
 foreach ($downloadLink in $highestTwoLinks) {
     $originalFilename = $downloadLink.Split('/')[-1]
     $destinationPath = Join-Path -Path $downloadDirectory -ChildPath $originalFilename
 
+    # Check the size of the file on the server
     $request = [System.Net.HttpWebRequest]::Create($downloadLink)
     $request.Method = "HEAD"
     $request.UserAgent = "Mozilla/5.0"
@@ -90,37 +111,36 @@ foreach ($downloadLink in $highestTwoLinks) {
         $contentLength = $response.ContentLength
         $response.Close()
     } catch {
-        Write-Host "Error fetching response from server: $($_.Exception.Message)" -ForegroundColor Red
-        return
+        Write-Error "Error fetching file information for $originalFilename $($_.Exception.Message)"
+        continue
     }
 
-    $existingFiles = Get-ChildItem -Path $downloadDirectory -Filter "*.exe"
-    $fileExists = $existingFiles | Where-Object { $_.Length -eq $contentLength }
+    # Compare size with existing file
+    $matchingFile = Get-ChildItem -Path $downloadDirectory -Filter $originalFilename |
+                    Where-Object { $_.Length -eq $contentLength }
 
-    if (-not $fileExists) {
-        Write-Host "Downloading new version: $originalFilename" -ForegroundColor Green
-        Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath
-    } else {
-        #Write-Host "File $originalFilename already exists and is up to date." -ForegroundColor Yellow
+    if (-not $matchingFile) {
+        Write-Host "Downloading new version: $originalFilename..."
+        Invoke-WebRequest -Uri $downloadLink -OutFile $destinationPath -UseBasicParsing
     }
 }
 
+# -----
 # Section D - Delete older downloads, keeping the latest two
 # PartVersion 1.01
 # -----
-#Write-Host "Cleaning Up..."
-$downloadedFiles = Get-ChildItem -Path $downloadDirectory -Filter "*.exe" | Sort-Object LastWriteTime -Descending
+$downloadedFiles = Get-ChildItem -Path $downloadDirectory -Filter "*.exe" |
+                   Sort-Object LastWriteTime -Descending
 if ($downloadedFiles.Count -gt 2) {
     $filesToDelete = $downloadedFiles | Select-Object -Skip 2
-    foreach ($file in $filesToDelete) {
-        #Write-Host "Deleting old file: $($file.Name)" -ForegroundColor Red
-        Remove-Item -Path $file.FullName -Force
-    }
+    Remove-Item -Path ($filesToDelete | ForEach-Object { $_.FullName }) -Force
 }
 
 
 # Part 4 - Check for Firebird Installation
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 4/15] Checking for Firebird installation" -ForegroundColor Cyan
 $firebirdDir = "C:\Program Files (x86)\Firebird"
 $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
@@ -142,6 +162,8 @@ if (-not (Test-Path $firebirdDir)) {
 
 # Part 5 - Stop SMUpdates if Running
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 5/15] Stopping SMUpdates if running" -ForegroundColor Cyan
 $monitorJob = Start-Job -ScriptBlock {
     function Monitor-SmUpdates {
@@ -159,6 +181,8 @@ $monitorJob = Start-Job -ScriptBlock {
 
 # Part 6 - Manage SO Live Sales Service
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 6/15] Managing SO Live Sales service" -ForegroundColor Cyan
 $ServiceName = "srvSOLiveSales"
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
@@ -180,11 +204,13 @@ if ($service) {
         Write-Host "$ServiceName service is not running." -ForegroundColor Yellow
     }
 } else {
-    Write-Host "$ServiceName service not found." -ForegroundColor Yellow
+    #Write-Host "$ServiceName service not found." -ForegroundColor Yellow
 }
 
 # Part 7 - Manage PDTWiFi Processes
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 7/15] Managing PDTWiFi processes" -ForegroundColor Cyan
 $PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
 $PDTWiFiStates = @{}
@@ -197,7 +223,7 @@ foreach ($process in $PDTWiFiProcesses) {
         Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
         Write-Host "$process stopped successfully." -ForegroundColor Green
     } else {
-        Write-Host "$process process is not running." -ForegroundColor Yellow
+        #Write-Host "$process process is not running." -ForegroundColor Yellow
         $PDTWiFiStates[$process] = "Not running"
     }
 }
@@ -208,6 +234,8 @@ $PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | O
 
 # Part 8 - Wait for Single Instance of Firebird.exe
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 8/15] Checking / Waiting for a single instance of Firebird" -ForegroundColor Cyan
 
 $setupDir = "$workingDir\SmartOffice_Installer"
@@ -229,10 +257,11 @@ function WaitForSingleFirebirdInstance {
 WaitForSingleFirebirdInstance
 
 # Part 9 - Launch SO Setup Executable with Enhanced Terminal Menu
-# PartVersion 1.01
+# PartVersion 1.04
 # -----
 # Improved terminal selection menu with colors and table formatting
-
+Clear-Host
+Show-Intro
 Write-Host "[Part 9/15] Launching SO setup..." -ForegroundColor Cyan
 
 # Get all setup executables in the SmartOffice_Installer directory
@@ -246,15 +275,24 @@ if ($setupExes.Count -eq 0) {
     $selectedExe = $setupExes[0]
     Write-Host "Found setup: $($selectedExe.Name)" -ForegroundColor Green
 } else {
+    # Sort executables by version (numeric part in the name) ascending
+    $setupExes = $setupExes | Sort-Object {
+        [regex]::Match($_.Name, "Setup(\d+)\.exe").Groups[1].Value -as [int]
+    }
+
     # Multiple setup files found, present a terminal selection menu
     Write-Host "`nPlease select the setup to run:`n" -ForegroundColor Yellow
-    Write-Host ("{0,-5} {1,-35} {2,-20}" -f "No.", "Executable Name", "Date Modified") -ForegroundColor White
-    Write-Host ("{0,-5} {1,-35} {2,-20}" -f "---", "----------------", "------------") -ForegroundColor Gray
+    Write-Host ("{0,-5} {1,-30} {2,-20} {3,-10}" -f "No.", "Executable Name", "Date Modified", "Version") -ForegroundColor White
+    Write-Host ("{0,-5} {1,-30} {2,-20} {3,-10}" -f "---", "------------------------------", "------------", "-------") -ForegroundColor Gray
 
     for ($i = 0; $i -lt $setupExes.Count; $i++) {
         $exe = $setupExes[$i]
-        $dateModified = $exe.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
-        Write-Host ("{0,-5} {1,-35} {2,-20}" -f ($i + 1), $exe.Name, $dateModified) -ForegroundColor Green
+        $dateModified = $exe.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+        $versionType = if ($i -eq 0) { "Current" } else { "Testing" }
+        $color = if ($i -eq 0) { "Green" } else { "Yellow" }
+
+        # Present the setup info with adjusted spacing for a more compact look
+        Write-Host ("{0,-5} {1,-30} {2,-20} {3,-10}" -f ($i + 1), $exe.Name, $dateModified, $versionType) -ForegroundColor $color
     }
 
     Write-Host "`nEnter the number of your selection (or press Enter to cancel):" -ForegroundColor Cyan
@@ -287,26 +325,31 @@ try {
     exit
 }
 
+
 # Part 10 - Wait for User Confirmation
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
 # Stop monitoring SMUpdates process
 Stop-Job -Job $monitorJob
 Remove-Job -Job $monitorJob
 Write-Host "Waiting for confirmation Upgrade is Complete..." -ForegroundColor Yellow
 Add-Type -AssemblyName System.Windows.Forms
-[System.Windows.Forms.MessageBox]::Show("ONLY when the upgrade is FULLY complete and SO is closed.`n`nClick OK to complete Post Install tasks.", "SO Post Upgrade Confirmation", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+[System.Windows.Forms.MessageBox]::Show("Please ensure the upgrade is complete and Smart Office is closed before clicking OK.", "SO Post Upgrade Confirmation", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
 # Check for Running SO Processes Again
 foreach ($process in $processesToCheck) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-        Write-Host "SO is still running. Please close it and press Enter to continue..." -ForegroundColor Red
+        Write-Host "Smart Office is still running. Please close it and press Enter to continue..." -ForegroundColor Red
         Read-Host
     }
 }
 
 # Part 11 - Set Permissions for SM Folder
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 11/15] Setting permissions for SM folder. Please Wait..." -ForegroundColor Cyan
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
@@ -316,6 +359,8 @@ try {
 
 # Part 12 - Set Permissions for Firebird Folder
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 12/15] Setting permissions for Firebird folder. Please Wait..." -ForegroundColor Cyan
 try {
     & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
@@ -325,6 +370,8 @@ try {
 
 # Part 13 - Revert SO Live Sales Service
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 13/15] Reverting SO Live Sales service" -ForegroundColor Cyan
 if ($wasRunning) {
     try {
@@ -341,6 +388,8 @@ if ($wasRunning) {
 
 # Part 14 - Revert PDTWiFi Processes
 # -----
+Clear-Host
+Show-Intro
 Write-Host "[Part 14/15] Reverting PDTWiFi processes" -ForegroundColor Cyan
 
 if (Test-Path $PDTWiFiStatesFilePath) {
@@ -374,7 +423,9 @@ foreach ($process in $PDTWiFiProcesses) {
 
 # Part 15 - Clean up and Finish Script
 # -----
-Write-Host "[Part 15/15] Cleaning up and finishing script..." -ForegroundColor Cyan
+Clear-Host
+Show-Intro
+Write-Host "[Part 15/15] Cleaning up and finish." -ForegroundColor Cyan
 
 # Clean up temporary file
 if (Test-Path $PDTWiFiStatesFilePath) {
@@ -387,5 +438,5 @@ $executionTime = $endTime - $startTime
 $totalMinutes = [math]::Floor($executionTime.TotalMinutes)
 $totalSeconds = $executionTime.Seconds
 Write-Host " "
-Write-Host "Script completed successfully in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
+Write-Host "Completed in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
 Write-Host " "
