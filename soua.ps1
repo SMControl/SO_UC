@@ -1,7 +1,7 @@
 # Initialize script start time
 $startTime = Get-Date
 function Show-Intro {
-    Write-Host "Smart Office - Upgrade Assistant - Version 1.137" -ForegroundColor Green
+    Write-Host "Smart Office - Upgrade Assistant - Version 1.138" -ForegroundColor Green
     Write-Host "[NB] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
     Write-Host "Please allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall."
     Write-Host "--------------------------------------------------------------------------------"
@@ -11,6 +11,7 @@ function Show-Intro {
 # - changed layout and progress of each part.
 # - added firewall messages for the two exe's & we get them both now to have
 # - also launch SO_UC.exe a the end just to make sure the schedueled task for SO_UC.exe gets created.
+# - added an any key to exit at the end so people can see summary
 
 # Set the working directory
 $workingDir = "C:\winsm"
@@ -481,3 +482,4 @@ Write-Host "Smart Office $(Split-Path -Leaf $selectedExe.Name) Installed"
 Write-Host " "
 Write-Host "Completed in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
 Write-Host " "
+Read-Host "Press any key to exit"
