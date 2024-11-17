@@ -6,6 +6,10 @@
 - Works with Current or Test versions and will obtain them.
 - Non-Destructive - Always safe to try assuming a backup has been performed.
 - Assistant Only - Does not interfere with the actual Setup, just automates the before and after.
+
+https://github.com/SMControl/SO_UC/blob/main/test/SOUA_SelectVersion.png
+
+![Select Version](https://github.com/SMControl/SO_UC/blob/main/test/SOUA_SelectVersion.png)
   
 ## Task Performed
 
@@ -13,6 +17,10 @@
 - Installs Firebird as required if needed.
 - Before and After takes care of LivesSales Service and the two PDTWiFi's.
 - Sets folder permissions
+
+![OK to Finish](https://github.com/SMControl/SO_UC/blob/main/test/SOUA_OktoFinish.png)
+
+![OK to Start](https://github.com/SMControl/SO_UC/blob/main/test/SOUA_OktoStart.png)
 
 ## SO_UC.exe
 
