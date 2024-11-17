@@ -2,7 +2,7 @@
 
 ## Overview
 
-- Script automates the PRE and POST install tasks for SO Setup
+- Automates the PRE and POST install tasks for SO Setup
 - Works with both Current and Test versions
 - Non-Destructive - Always safe to try assuming a backup has been performed
 - Assistant Only - Does not interfere with the actual Setup, just automates the before and after
@@ -27,11 +27,11 @@
 - Will only download files if a newer version is found
 
 ## SmartOffice_Upgrade_Assistant.exe
-- Executable of this script stored in `C:\winsm` for future ease of use
+- Executable stored in `C:\winsm` for future ease of use
 
 ## Caveats
 
-- Does not currently support Setup requiring reboots. (Either quit Assistant script and continue or reboot after complete)
+- Does not currently support Setup requiring reboots. (Either quit Assistant program and continue or reboot after complete)
 - Should not be used on non-standard installation paths. Where install path is not `C:\Program Files (x86)`
 
 ## Requirements
