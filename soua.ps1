@@ -1,7 +1,7 @@
 # Initialize script start time
 $startTime = Get-Date
 function Show-Intro {
-    Write-Host "Smart Office - Upgrade Assistant - Version 1.139" -ForegroundColor Green
+    Write-Host "Smart Office - Upgrade Assistant - Version 1.140" -ForegroundColor Green
     Write-Host "[NB] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
     Write-Host "Please allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall."
     Write-Host "--------------------------------------------------------------------------------"
@@ -12,6 +12,7 @@ function Show-Intro {
 # - also launch SO_UC.exe a the end just to make sure the schedueled task for SO_UC.exe gets created.
 # - added an any key to exit at the end so people can see summary
 # - change end to any to to quit or enter to launch smart office
+# - wont' run end SO_UC.exe if tasks already exists.
 
 # Set the working directory
 $workingDir = "C:\winsm"
@@ -469,8 +470,14 @@ if (Test-Path $PDTWiFiStatesFilePath) {
     Remove-Item -Path $PDTWiFiStatesFilePath -Force
 }
 
-# Run SO_UC.exe to make sure the Scheduled Task gets created.
-Start-Process -FilePath "C:\winsm\SO_UC.exe" -Wait
+# Run SO_UC.exe if it's Task doesn't exist.
+$taskExists = Get-ScheduledTask -TaskName "SO InstallerUpdates" -ErrorAction SilentlyContinue
+
+if (-not $taskExists) {
+    Start-Process -FilePath "C:\winsm\SO_UC.exe" -Wait
+} else {
+    #Write-Output "Scheduled Task 'SO InstallerUpdates' already exists. Skipping execution."
+}
 
 # Calculate and display script execution time
 $endTime = Get-Date
