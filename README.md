@@ -7,8 +7,6 @@
 - Non-Destructive - Always safe to try assuming a backup has been performed.
 - Assistant Only - Does not interfere with the actual Setup, just automates the before and after.
 
-https://github.com/SMControl/SO_UC/blob/main/test/SOUA_SelectVersion.png
-
 ![Select Version](https://github.com/SMControl/SO_UC/blob/main/test/SOUA_SelectVersion.png)
   
 ## Task Performed
