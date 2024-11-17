@@ -1,17 +1,17 @@
 # Initialize script start time
 $startTime = Get-Date
 function Show-Intro {
-    Write-Host "Smart Office - Upgrade Assistant - Version 1.138" -ForegroundColor Green
+    Write-Host "Smart Office - Upgrade Assistant - Version 1.139" -ForegroundColor Green
     Write-Host "[NB] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
     Write-Host "Please allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall."
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ""
 }
 # Changes
-# - changed layout and progress of each part.
 # - added firewall messages for the two exe's & we get them both now to have
 # - also launch SO_UC.exe a the end just to make sure the schedueled task for SO_UC.exe gets created.
 # - added an any key to exit at the end so people can see summary
+# - change end to any to to quit or enter to launch smart office
 
 # Set the working directory
 $workingDir = "C:\winsm"
@@ -482,4 +482,11 @@ Write-Host "Smart Office $(Split-Path -Leaf $selectedExe.Name) Installed"
 Write-Host " "
 Write-Host "Completed in $($totalMinutes)m $($totalSeconds)s." -ForegroundColor Green
 Write-Host " "
-Read-Host "Press any key to exit"
+
+Write-Host "Press Enter to start Smart Office, or any other key to exit."
+$key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+if ($key.VirtualKeyCode -eq 13) {
+    Start-Process "C:\Program Files (x86)\StationMaster\Sm32.exe"
+} else {
+    Write-Host "Exiting..."
+}
