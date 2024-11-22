@@ -16,10 +16,6 @@
 - Before and After takes care of LivesSales Service and the two PDTWiFi's
 - Sets folder permissions
 
-![OK to Finish](https://github.com/SMControl/SO_UC/blob/main/test/SOUA_OktoFinish.png)
-
-![OK to Start](https://github.com/SMControl/SO_UC/blob/main/test/SOUA_OktoStart.png)
-
 ## SO_UC.exe
 
 - Schedules a daily task to run itself between 01:00 and 05:00
