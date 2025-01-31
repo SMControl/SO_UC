@@ -1,14 +1,14 @@
 # Initialize script start time
 $startTime = Get-Date
 function Show-Intro {
-    Write-Host "Smart Office - Upgrade Assistant - Version 1.140" -ForegroundColor Green
+    Write-Host "Smart Office - Upgrade Assistant - Version 1.141" -ForegroundColor Green
     Write-Host "[NB] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
     Write-Host "Please allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall."
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ""
 }
 # Changes
-# - added firewall messages for the two exe's & we get them both now to have
+# - Part 7 - store pdt process state directly after checking it
 # - also launch SO_UC.exe a the end just to make sure the schedueled task for SO_UC.exe gets created.
 # - added an any key to exit at the end so people can see summary
 # - change end to any to to quit or enter to launch smart office
@@ -239,6 +239,8 @@ if ($service) {
 
 # Part 7 - Manage PDTWiFi Processes
 # -----
+# PartVersion_1.01
+# - Set process state directly after checking.
 Clear-Host
 Show-Intro
 Write-Host "[Part 7/15] Managing PDTWiFi processes" -ForegroundColor Cyan
@@ -249,12 +251,13 @@ $PDTWiFiStates = @{}
 foreach ($process in $PDTWiFiProcesses) {
     $p = Get-Process -Name $process -ErrorAction SilentlyContinue
     if ($p) {
+        # Capture process state before stopping it
         $PDTWiFiStates[$process] = $p.Status
         Write-Host "Stopping $process process..." -ForegroundColor Yellow
         Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
         Write-Host "$process stopped successfully." -ForegroundColor Green
     } else {
-        #Write-Host "$process process is not running." -ForegroundColor Yellow
+        # If process isn't running, set state to "Not running"
         $PDTWiFiStates[$process] = "Not running"
     }
 }
