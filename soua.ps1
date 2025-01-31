@@ -1,17 +1,14 @@
 # Initialize script start time
 $startTime = Get-Date
 function Show-Intro {
-    Write-Host "Smart Office - Upgrade Assistant - Version 1.142" -ForegroundColor Green
+    Write-Host "Smart Office - Upgrade Assistant - Version 1.143" -ForegroundColor Green
     Write-Host "[NB] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
     Write-Host "Please allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall."
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ""
 }
 # Changes
-# - Part 14 - adjusted as per changes to Part 7
-# - Part 7 - store pdt process state directly after checking it
-# - also launch SO_UC.exe a the end just to make sure the schedueled task for SO_UC.exe gets created.
-# - added an any key to exit at the end so people can see summary
+# - Part 7&14 total re-do
 
 # Set the working directory
 $workingDir = "C:\winsm"
@@ -238,32 +235,39 @@ if ($service) {
 
 # Part 7 - Manage PDTWiFi Processes
 # -----
-# PartVersion_1.01
-# - Set process state directly after checking.
+# PartVersion_1.02
+# - total redo
 Clear-Host
 Show-Intro
 Write-Host "[Part 7/15] Managing PDTWiFi processes" -ForegroundColor Cyan
 Write-Host ""
-$PDTWiFiProcesses = @("PDTWiFi", "PDTWiFi64")
+
+# Initialize the process states
 $PDTWiFiStates = @{}
 
-foreach ($process in $PDTWiFiProcesses) {
-    $p = Get-Process -Name $process -ErrorAction SilentlyContinue
-    if ($p) {
-        # Capture process state before stopping it
-        $PDTWiFiStates[$process] = $p.Status
-        Write-Host "Stopping $process process..." -ForegroundColor Yellow
-        Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
-        Write-Host "$process stopped successfully." -ForegroundColor Green
-    } else {
-        # If process isn't running, set state to "Not running"
-        $PDTWiFiStates[$process] = "Not running"
-    }
+# Section A - PDTWiFi
+$PDTWiFi = "PDTWiFi"
+$pdtWiFiProcess = Get-Process -Name $PDTWiFi -ErrorAction SilentlyContinue
+if ($pdtWiFiProcess) {
+    $PDTWiFiStates[$PDTWiFi] = "Running"
+    Stop-Process -Name $PDTWiFi -Force -ErrorAction SilentlyContinue
+    Write-Host "$PDTWiFi stopped." -ForegroundColor Green
+} else {
+    $PDTWiFiStates[$PDTWiFi] = "Not running"
+    Write-Host "$PDTWiFi is not running." -ForegroundColor Yellow
 }
 
-# Log PDTWiFi states to a temporary file
-$PDTWiFiStatesFilePath = "$workingDir\PDTWiFiStates.txt"
-$PDTWiFiStates.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" } | Out-File -FilePath $PDTWiFiStatesFilePath
+# Section B - PDTWiFi64
+$PDTWiFi64 = "PDTWiFi64"
+$pdtWiFi64Process = Get-Process -Name $PDTWiFi64 -ErrorAction SilentlyContinue
+if ($pdtWiFi64Process) {
+    $PDTWiFiStates[$PDTWiFi64] = "Running"
+    Stop-Process -Name $PDTWiFi64 -Force -ErrorAction SilentlyContinue
+    Write-Host "$PDTWiFi64 stopped." -ForegroundColor Green
+} else {
+    $PDTWiFiStates[$PDTWiFi64] = "Not running"
+    Write-Host "$PDTWiFi64 is not running." -ForegroundColor Yellow
+}
 
 # Part 8 - Wait for Single Instance of Firebird.exe
 # -----
@@ -426,41 +430,27 @@ if ($wasRunning) {
 
 # Part 14 - Revert PDTWiFi Processes
 # -----
-# PartVersion 1.01
-# - adjsuted as per changes in Part 7 for checking state properly
+# PartVersion 1.02
+# - total re-do
 Clear-Host
 Show-Intro
 Write-Host "[Part 14/15] Reverting PDTWiFi processes" -ForegroundColor Cyan
 Write-Host ""
 
-if (Test-Path $PDTWiFiStatesFilePath) {
-    $storedStates = Get-Content -Path $PDTWiFiStatesFilePath | ForEach-Object {
-        $parts = $_ -split ":"
-        $process = $parts[0].Trim()
-        $status = $parts[1].Trim()
-        [PSCustomObject]@{
-            Process = $process
-            Status = $status
-        }
-    }
+# Section A - Recall and Revert PDTWiFi
+if ($PDTWiFiStates[$PDTWiFi] -eq "Running") {
+    Start-Process "C:\Program Files (x86)\StationMaster\PDTWiFi.exe"
+    Write-Host "$PDTWiFi started." -ForegroundColor Green
 } else {
-    Write-Host "Error: PDTWiFiStates.txt not found. Unable to revert PDTWiFi processes." -ForegroundColor Red
+    Write-Host "$PDTWiFi was not running, no action taken." -ForegroundColor Yellow
 }
 
-foreach ($process in $PDTWiFiProcesses) {
-    $currentStatus = $storedStates | Where-Object { $_.Process -eq $process } | Select-Object -ExpandProperty Status
-
-    if ($currentStatus -eq 'Running') {
-        # If the process was running before it was stopped, start it again
-        Write-Host "Starting $process process..." -ForegroundColor Yellow
-        Start-Process -Name $process -ErrorAction SilentlyContinue
-        Write-Host "$process started successfully." -ForegroundColor Green
-    } elseif ($currentStatus -eq 'Not running') {
-        # If the process was not running before, do nothing
-        Write-Host "$process was not running previously, so no action is needed." -ForegroundColor Yellow
-    } else {
-        Write-Host "Unknown status for $process. Unable to revert state." -ForegroundColor Red
-    }
+# Section B - Recall and Revert PDTWiFi64
+if ($PDTWiFiStates[$PDTWiFi64] -eq "Running") {
+    Start-Process "C:\Program Files (x86)\StationMaster\PDTWiFi64.exe"
+    Write-Host "$PDTWiFi64 started." -ForegroundColor Green
+} else {
+    Write-Host "$PDTWiFi64 was not running, no action taken." -ForegroundColor Yellow
 }
 
 
