@@ -1,18 +1,17 @@
 # Initialize script start time
 $startTime = Get-Date
 function Show-Intro {
-    Write-Host "Smart Office - Upgrade Assistant - Version 1.141" -ForegroundColor Green
+    Write-Host "Smart Office - Upgrade Assistant - Version 1.142" -ForegroundColor Green
     Write-Host "[NB] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
     Write-Host "Please allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall."
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ""
 }
 # Changes
+# - Part 14 - adjusted as per changes to Part 7
 # - Part 7 - store pdt process state directly after checking it
 # - also launch SO_UC.exe a the end just to make sure the schedueled task for SO_UC.exe gets created.
 # - added an any key to exit at the end so people can see summary
-# - change end to any to to quit or enter to launch smart office
-# - wont' run end SO_UC.exe if tasks already exists.
 
 # Set the working directory
 $workingDir = "C:\winsm"
@@ -427,6 +426,8 @@ if ($wasRunning) {
 
 # Part 14 - Revert PDTWiFi Processes
 # -----
+# PartVersion 1.01
+# - adjsuted as per changes in Part 7 for checking state properly
 Clear-Host
 Show-Intro
 Write-Host "[Part 14/15] Reverting PDTWiFi processes" -ForegroundColor Cyan
@@ -448,18 +449,20 @@ if (Test-Path $PDTWiFiStatesFilePath) {
 
 foreach ($process in $PDTWiFiProcesses) {
     $currentStatus = $storedStates | Where-Object { $_.Process -eq $process } | Select-Object -ExpandProperty Status
+
     if ($currentStatus -eq 'Running') {
+        # If the process was running before it was stopped, start it again
         Write-Host "Starting $process process..." -ForegroundColor Yellow
-        try {
-            Start-Process -FilePath "C:\Program Files (x86)\StationMaster\$process" -ErrorAction SilentlyContinue
-            Write-Host "$process started successfully." -ForegroundColor Green
-        } catch {
-            Write-Host "Error starting $process $_" -ForegroundColor Red
-        }
+        Start-Process -Name $process -ErrorAction SilentlyContinue
+        Write-Host "$process started successfully." -ForegroundColor Green
+    } elseif ($currentStatus -eq 'Not running') {
+        # If the process was not running before, do nothing
+        Write-Host "$process was not running previously, so no action is needed." -ForegroundColor Yellow
     } else {
-        Write-Host "$process was not running before, so no action needed." -ForegroundColor Yellow
+        Write-Host "Unknown status for $process. Unable to revert state." -ForegroundColor Red
     }
 }
+
 
 # Part 15 - Clean up and Finish Script
 # -----
