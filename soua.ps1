@@ -2,8 +2,7 @@
 $startTime = Get-Date
 function Show-Intro {
     Write-Host "Smart Office - Upgrade Assistant - Version 1.143" -ForegroundColor Green
-    Write-Host "[NB] If a Reboot is required, Post Upgrade Tasks must be performed manually." -ForegroundColor Yellow
-    Write-Host "Please allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall."
+    Write-Host "Allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall." -ForegroundColor Yellow
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ""
 }
@@ -29,7 +28,9 @@ Set-Location -Path $workingDir
 Clear-Host
 Show-Intro
 Write-Host "[Part 1/15] System Pre-Checks" -ForegroundColor Cyan
+Write-Host "[#______________]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 function Test-Admin {
     $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -65,7 +66,9 @@ if (-Not (Test-Path $soucExeDestinationPath)) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 2/15] Checking processes" -ForegroundColor Cyan
+Write-Host "[##_____________]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 $processesToCheck = @("Sm32Main", "Sm32")
 
 foreach ($process in $processesToCheck) {
@@ -85,7 +88,9 @@ foreach ($process in $processesToCheck) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 3/15] Checking for Setup Files. Please Wait." -ForegroundColor Cyan
+Write-Host "[###____________]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 # Section A - Retrieve .exe links from the webpage
 # PartVersion 1.00
 # -----
@@ -165,7 +170,9 @@ if ($downloadedFiles.Count -gt 2) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 4/15] Checking for Firebird installation" -ForegroundColor Cyan
+Write-Host "[####___________]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 $firebirdDir = "C:\Program Files (x86)\Firebird"
 $firebirdInstallerURL = "https://raw.githubusercontent.com/SMControl/SM_Firebird_Installer/main/SMFI_Online.ps1"
 
@@ -189,7 +196,9 @@ if (-not (Test-Path $firebirdDir)) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 5/15] Stopping SMUpdates if running" -ForegroundColor Cyan
+Write-Host "[#####__________]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 $monitorJob = Start-Job -ScriptBlock {
     function Monitor-SmUpdates {
         while ($true) {
@@ -209,7 +218,9 @@ $monitorJob = Start-Job -ScriptBlock {
 Clear-Host
 Show-Intro
 Write-Host "[Part 6/15] Managing SO Live Sales service" -ForegroundColor Cyan
+Write-Host "[######_________]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 $ServiceName = "srvSOLiveSales"
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 $wasRunning = $false
@@ -240,7 +251,9 @@ if ($service) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 7/15] Managing PDTWiFi processes" -ForegroundColor Cyan
+Write-Host "[#######________]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 
 # Initialize the process states
 $PDTWiFiStates = @{}
@@ -274,7 +287,9 @@ if ($pdtWiFi64Process) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 8/15] Waiting for a single instance of Firebird" -ForegroundColor Cyan
+Write-Host "[########_______]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 
 $setupDir = "$workingDir\SmartOffice_Installer"
 if (-not (Test-Path $setupDir -PathType Container)) {
@@ -300,7 +315,9 @@ WaitForSingleFirebirdInstance
 Clear-Host
 Show-Intro
 Write-Host "[Part 9/15] Launching SO setup..." -ForegroundColor Cyan
+Write-Host "[#########______]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 
 # Get all setup executables in the SmartOffice_Installer directory
 $setupExes = Get-ChildItem -Path "C:\winsm\SmartOffice_Installer" -Filter "*.exe"
@@ -369,7 +386,9 @@ try {
 Clear-Host
 Show-Intro
 Write-Host "[Part 10/15] Post Upgrade" -ForegroundColor Cyan
+Write-Host "[##########_____]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 # Stop monitoring SMUpdates process
 Stop-Job -Job $monitorJob
 Remove-Job -Job $monitorJob
@@ -390,7 +409,9 @@ foreach ($process in $processesToCheck) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 11/15] Setting permissions for Stationmaster folder. Please Wait..." -ForegroundColor Cyan
+Write-Host "[###########____]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 try {
     & icacls "C:\Program Files (x86)\StationMaster" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -402,7 +423,9 @@ try {
 Clear-Host
 Show-Intro
 Write-Host "[Part 12/15] Setting permissions for Firebird folder. Please Wait..." -ForegroundColor Cyan
+Write-Host "[############___]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 try {
     & icacls "C:\Program Files (x86)\Firebird" /grant "*S-1-1-0:(OI)(CI)F" /T /C > $null
 } catch {
@@ -414,7 +437,9 @@ try {
 Clear-Host
 Show-Intro
 Write-Host "[Part 13/15] Reverting SO Live Sales service" -ForegroundColor Cyan
+Write-Host "[#############__]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 if ($wasRunning) {
     try {
         Write-Host "Setting $ServiceName service back to Automatic startup..." -ForegroundColor Yellow
@@ -435,7 +460,9 @@ if ($wasRunning) {
 Clear-Host
 Show-Intro
 Write-Host "[Part 14/15] Reverting PDTWiFi processes" -ForegroundColor Cyan
+Write-Host "[##############_]" -ForegroundColor Cyan
 Write-Host ""
+Start-Sleep -Seconds 1
 
 # Section A - Recall and Revert PDTWiFi
 if ($PDTWiFiStates[$PDTWiFi] -eq "Running") {
@@ -459,12 +486,9 @@ if ($PDTWiFiStates[$PDTWiFi64] -eq "Running") {
 Clear-Host
 Show-Intro
 Write-Host "[Part 15/15] Clean up and finish" -ForegroundColor Cyan
+Write-Host "[###############]" -ForegroundColor Cyan
 Write-Host ""
-
-# Clean up temporary file
-if (Test-Path $PDTWiFiStatesFilePath) {
-    Remove-Item -Path $PDTWiFiStatesFilePath -Force
-}
+Start-Sleep -Seconds 1
 
 # Run SO_UC.exe if it's Task doesn't exist.
 $taskExists = Get-ScheduledTask -TaskName "SO InstallerUpdates" -ErrorAction SilentlyContinue
