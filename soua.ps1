@@ -2,7 +2,6 @@
 $startTime = Get-Date
 function Show-Intro {
     Write-Host "Smart Office - Upgrade Assistant - Version 1.143" -ForegroundColor Green
-    Write-Host "Allow SmartOffice_Upgrade_Assistant.exe and SO_UC.exe through the firewall." -ForegroundColor Yellow
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ""
 }
@@ -343,7 +342,7 @@ if ($setupExes.Count -eq 0) {
     for ($i = 0; $i -lt $setupExes.Count; $i++) {
         $exe = $setupExes[$i]
         $dateModified = $exe.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
-        $versionType = if ($i -eq 0) { "Current" } else { "Testing" }
+        $versionType = if ($i -eq 0) { "Current" } else { "Next" }
         $color = if ($i -eq 0) { "Green" } else { "Yellow" }
 
         # Present the setup info with adjusted spacing for a more compact look
